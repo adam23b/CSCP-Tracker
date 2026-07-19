@@ -1,19 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useSession } from "../lib/useSession";
 import Auth from "../components/Auth";
+import NavBar from "../components/NavBar";
 import Dashboard from "../components/Dashboard";
 
 export default function Page() {
-  const [session, setSession] = useState(undefined); // undefined = not checked yet
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  const session = useSession();
 
   if (session === undefined) {
     return <div className="wrap"><p className="empty">Loading…</p></div>;
@@ -21,5 +13,10 @@ export default function Page() {
   if (!session) {
     return <Auth />;
   }
-  return <Dashboard session={session} />;
+  return (
+    <div className="wrap">
+      <NavBar active="route" />
+      <Dashboard session={session} />
+    </div>
+  );
 }

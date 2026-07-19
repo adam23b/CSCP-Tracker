@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { MODULES, STEP_DAYS, dayStr, phaseBoundaries, currentPhaseIndex } from "../lib/constants";
+import { uploadImage, publicUrl, deleteImage, newImagePath } from "../lib/storage";
 
 export default function Dashboard({ session }) {
   const userId = session.user.id;
@@ -20,6 +21,7 @@ export default function Dashboard({ session }) {
   const [cardModule, setCardModule] = useState(1);
   const [cardFront, setCardFront] = useState("");
   const [cardBack, setCardBack] = useState("");
+  const [cardImageFile, setCardImageFile] = useState(null);
   const [logModule, setLogModule] = useState(1);
   const [logMinutes, setLogMinutes] = useState("");
 
@@ -160,6 +162,12 @@ export default function Dashboard({ session }) {
 
   async function addCard() {
     if (!cardFront.trim() || !cardBack.trim()) return;
+    let image_path = null;
+    if (cardImageFile) {
+      const ext = (cardImageFile.name.split(".").pop() || "png").toLowerCase();
+      image_path = newImagePath(userId, "cards", ext);
+      await uploadImage(image_path, cardImageFile);
+    }
     const { data } = await supabase
       .from("cards")
       .insert({
@@ -169,12 +177,14 @@ export default function Dashboard({ session }) {
         back: cardBack.trim(),
         step: 0,
         due_date: dayStr(new Date()),
+        image_path,
       })
       .select()
       .single();
     setCards((c) => [data, ...c]);
     setCardFront("");
     setCardBack("");
+    setCardImageFile(null);
   }
 
   async function gradeCard(card, result) {
@@ -190,26 +200,42 @@ export default function Dashboard({ session }) {
     setRevealedId(null);
   }
 
-  async function saveCardEdit(id, front, back, module_id) {
-    await supabase.from("cards").update({ front, back, module_id }).eq("id", id);
-    setCards((cs) => cs.map((c) => (c.id === id ? { ...c, front, back, module_id } : c)));
+  async function saveCardEdit(id, front, back, module_id, newImageFile, removeImage) {
+    const existing = cards.find((c) => c.id === id);
+    let image_path = existing?.image_path || null;
+
+    if (removeImage && image_path) {
+      await deleteImage(image_path);
+      image_path = null;
+    }
+    if (newImageFile) {
+      if (image_path) await deleteImage(image_path);
+      const ext = (newImageFile.name.split(".").pop() || "png").toLowerCase();
+      image_path = newImagePath(userId, "cards", ext);
+      await uploadImage(image_path, newImageFile);
+    }
+
+    await supabase.from("cards").update({ front, back, module_id, image_path }).eq("id", id);
+    setCards((cs) => cs.map((c) => (c.id === id ? { ...c, front, back, module_id, image_path } : c)));
     setEditingCardId(null);
   }
 
   async function deleteCard(id) {
+    const existing = cards.find((c) => c.id === id);
+    if (existing?.image_path) await deleteImage(existing.image_path);
     await supabase.from("cards").delete().eq("id", id);
     setCards((cs) => cs.filter((c) => c.id !== id));
   }
 
   if (loading || !settings) {
-    return <div className="wrap"><p className="empty">Loading your route…</p></div>;
+    return <p className="empty">Loading your route…</p>;
   }
 
   const currentDue = dueCards[0];
   const currentDueModule = currentDue ? MODULES.find((m) => m.id === currentDue.module_id) : null;
 
   return (
-    <div className="wrap">
+    <div>
       <div className="topbar">
         <div>
           <div className="eyebrow">ASCM · CSCP Exam Content Manual v5.0</div>
@@ -219,7 +245,6 @@ export default function Dashboard({ session }) {
           <div className="stat"><div className="num">{totalHours.toFixed(1)}</div><div className="lbl">Hrs logged</div></div>
           <div className="stat"><div className="num">{doneCount}/8</div><div className="lbl">Modules cleared</div></div>
           <div className="stat"><div className="num">{dueCards.length}</div><div className="lbl">Cards due</div></div>
-          <button className="signout" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </div>
 
@@ -294,6 +319,7 @@ export default function Dashboard({ session }) {
               <div className="due-card">
                 <div className="tag">M{currentDue.module_id} · {currentDueModule?.title.split(",")[0]}</div>
                 <div className="front">{currentDue.front}</div>
+                {currentDue.image_path && <img className="card-image" src={publicUrl(currentDue.image_path)} alt="" />}
                 {revealedId === currentDue.id && <div className="back">{currentDue.back}</div>}
                 {revealedId !== currentDue.id ? (
                   <button className="ghost" onClick={() => setRevealedId(currentDue.id)}>Show answer</button>
@@ -317,6 +343,10 @@ export default function Dashboard({ session }) {
               </select>
               <textarea placeholder="Front — question, term, or scenario prompt" value={cardFront} onChange={(e) => setCardFront(e.target.value)} />
               <textarea placeholder="Back — answer or explanation" value={cardBack} onChange={(e) => setCardBack(e.target.value)} />
+              <div className="file-row">
+                <input type="file" accept="image/*" onChange={(e) => setCardImageFile(e.target.files[0] || null)} />
+                {cardImageFile && <img className="thumb" src={URL.createObjectURL(cardImageFile)} alt="" />}
+              </div>
               <button onClick={addCard}>Add to deck</button>
             </div>
           </div>
@@ -385,6 +415,8 @@ function DeckRow({ card, editing, onEdit, onCancel, onSave, onDelete }) {
   const [front, setFront] = useState(card.front);
   const [back, setBack] = useState(card.back);
   const [moduleId, setModuleId] = useState(card.module_id);
+  const [newImageFile, setNewImageFile] = useState(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const m = MODULES.find((x) => x.id === card.module_id);
 
   if (editing) {
@@ -396,8 +428,18 @@ function DeckRow({ card, editing, onEdit, onCancel, onSave, onDelete }) {
           </select>
           <textarea value={front} onChange={(e) => setFront(e.target.value)} />
           <textarea value={back} onChange={(e) => setBack(e.target.value)} />
+          {card.image_path && !removeImage && (
+            <div className="thumb-row">
+              <img className="thumb" src={publicUrl(card.image_path)} alt="" />
+              <button className="ghost small" onClick={() => setRemoveImage(true)}>Remove image</button>
+            </div>
+          )}
+          <div className="file-row">
+            <input type="file" accept="image/*" onChange={(e) => setNewImageFile(e.target.files[0] || null)} />
+            {newImageFile && <img className="thumb" src={URL.createObjectURL(newImageFile)} alt="" />}
+          </div>
           <div className="row">
-            <button className="small" onClick={() => onSave(card.id, front, back, moduleId)}>Save</button>
+            <button className="small" onClick={() => onSave(card.id, front, back, moduleId, newImageFile, removeImage)}>Save</button>
             <button className="ghost small" onClick={onCancel}>Cancel</button>
           </div>
         </div>
@@ -414,6 +456,7 @@ function DeckRow({ card, editing, onEdit, onCancel, onSave, onDelete }) {
         </div>
       </div>
       <div className="dr-front">{card.front}</div>
+      {card.image_path && <img className="thumb" src={publicUrl(card.image_path)} alt="" style={{ marginTop: 6 }} />}
       <div className="dr-back">{card.back}</div>
     </div>
   );

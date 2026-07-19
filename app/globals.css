@@ -120,3 +120,42 @@ button:hover:not(:disabled) { filter: brightness(1.08); }
 .deck-row .dr-actions { display: flex; gap: 6px; }
 .edit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .edit-form textarea { min-height: 38px; }
+
+/* nav */
+.navbar { display: flex; justify-content: space-between; align-items: center; max-width: 1000px; margin: 0 auto 22px; }
+.navlinks { display: flex; gap: 18px; }
+.navlink { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; padding-bottom: 4px; border-bottom: 2px solid transparent; }
+.navlink.active { color: var(--amber); border-bottom-color: var(--amber); }
+.navlink:hover { color: var(--text); }
+
+/* images in cards */
+.card-image { max-width: 100%; max-height: 220px; border-radius: 8px; margin: 10px auto; display: block; }
+.thumb-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; }
+.file-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+input[type=file] { color: var(--muted); font-size: 12px; }
+
+/* drawing pad */
+.drawpad-overlay { position: fixed; inset: 0; background: rgba(11,18,32,.85); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.drawpad-box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.drawpad-canvas { background: #fff; border-radius: 8px; touch-action: none; cursor: crosshair; display: block; }
+
+/* notes */
+.note-card { background: var(--panel-alt); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.note-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.note-title { font-size: 14px; font-weight: 600; }
+.note-tag { font-size: 10px; color: var(--amber); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+.note-content { font-size: 13px; color: var(--text); margin-top: 6px; white-space: pre-wrap; }
+.note-form { display: flex; flex-direction: column; gap: 8px; }
+.note-form textarea { min-height: 90px; }
+
+/* plan page */
+.plan-card { max-width: 760px; margin: 0 auto; }
+.plan-card h2 { font-size: 18px; margin-top: 26px; margin-bottom: 10px; }
+.plan-card h3 { font-size: 15px; color: var(--amber); margin-top: 18px; margin-bottom: 6px; }
+.plan-card p, .plan-card li { font-size: 13.5px; color: var(--text); line-height: 1.6; }
+.plan-card ul { padding-left: 20px; margin: 6px 0; }
+.plan-table { width: 100%; border-collapse: collapse; margin: 10px 0 20px; font-size: 13px; }
+.plan-table th, .plan-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.plan-table th { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 11px; text-transform: uppercase; }
+.plan-lead { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
