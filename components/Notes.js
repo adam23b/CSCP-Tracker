@@ -18,6 +18,8 @@ export default function Notes({ session }) {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+  const [openGroups, setOpenGroups] = useState({ 0: true });
+  const [viewingNoteId, setViewingNoteId] = useState(null);
 
   useEffect(() => {
     load();
@@ -128,6 +130,24 @@ export default function Notes({ session }) {
 
   const moduleTitle = (id) => (id ? MODULES.find((m) => m.id === id)?.title.split(",")[0] : "General");
 
+  const groups = useMemo(() => {
+    const map = {};
+    map[0] = { title: "General", notes: [] };
+    MODULES.forEach((m) => (map[m.id] = { title: m.title.split(",")[0], notes: [] }));
+    notes.forEach((n) => {
+      const key = n.module_id || 0;
+      if (!map[key]) map[key] = { title: moduleTitle(n.module_id), notes: [] };
+      map[key].notes.push(n);
+    });
+    return map;
+  }, [notes]);
+
+  function toggleGroup(key) {
+    setOpenGroups((g) => ({ ...g, [key]: !g[key] }));
+  }
+
+  const viewingNote = viewingNoteId ? notes.find((n) => n.id === viewingNoteId) : null;
+
   return (
     <div className="cols">
       <div className="card">
@@ -171,41 +191,64 @@ export default function Notes({ session }) {
         <h2>Your notes <span className="count">{notes.length}</span></h2>
         {loading ? (
           <div className="empty">Loading…</div>
-        ) : notes.length === 0 ? (
-          <div className="empty">No notes yet — add worked examples, process flows, or anything a flashcard can't hold.</div>
         ) : (
-          notes.map((n) => (
-            <div className="note-card" key={n.id}>
-              <div className="note-top">
-                <div>
-                  <div className="note-tag">{moduleTitle(n.module_id)}</div>
-                  <div className="note-title">{n.title}</div>
-                </div>
-                <div className="dr-actions">
-                  <button className="ghost small" onClick={() => editNote(n)}>Edit</button>
-                  <button className="danger small" onClick={() => deleteNote(n)}>Delete</button>
-                </div>
+          <div className="notes-groups">
+            {Object.entries(groups).map(([key, group]) => (
+              <div className="note-group" key={key}>
+                <button className="note-group-header" onClick={() => toggleGroup(key)}>
+                  <span>{openGroups[key] ? "▾" : "▸"} {group.title}</span>
+                  <span className="count">{group.notes.length}</span>
+                </button>
+                {openGroups[key] && (
+                  <div className="note-group-body">
+                    {group.notes.length === 0 ? (
+                      <div className="empty">No notes yet.</div>
+                    ) : (
+                      group.notes.map((n) => (
+                        <div className="note-row" key={n.id}>
+                          <button className="note-row-title" onClick={() => setViewingNoteId(n.id)}>
+                            {n.title}
+                            {n.image_paths && n.image_paths.length > 0 && <span className="note-row-icon"> 🖼</span>}
+                          </button>
+                          <button className="danger small" onClick={() => deleteNote(n)}>Delete</button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-              {n.content && <div className="note-content">{n.content}</div>}
-              {n.image_paths && n.image_paths.length > 0 && (
-                <div className="thumb-row">
-                  {n.image_paths.map((p) => (
-                    <img
-                      key={p}
-                      className="thumb"
-                      src={publicUrl(p)}
-                      alt=""
-                      onClick={() => setLightbox(p)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
       {drawOpen && <DrawingPad onSave={addDrawing} onCancel={() => setDrawOpen(false)} />}
+
+      {viewingNote && (
+        <div className="note-viewer-overlay" onClick={() => setViewingNoteId(null)}>
+          <div className="note-viewer-box" onClick={(e) => e.stopPropagation()}>
+            <div className="note-top">
+              <div>
+                <div className="note-tag">{moduleTitle(viewingNote.module_id)}</div>
+                <div className="note-title" style={{ fontSize: 19 }}>{viewingNote.title}</div>
+              </div>
+              <div className="dr-actions">
+                <button className="ghost small" onClick={() => { editNote(viewingNote); setViewingNoteId(null); }}>Edit</button>
+                <button className="danger small" onClick={() => { deleteNote(viewingNote); setViewingNoteId(null); }}>Delete</button>
+                <button className="ghost small" onClick={() => setViewingNoteId(null)}>Close</button>
+              </div>
+            </div>
+            {viewingNote.content && <div className="note-content">{viewingNote.content}</div>}
+            {viewingNote.image_paths && viewingNote.image_paths.length > 0 && (
+              <div className="note-viewer-images">
+                {viewingNote.image_paths.map((p) => (
+                  <img key={p} className="note-viewer-image" src={publicUrl(p)} alt="" onClick={() => setLightbox(p)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {lightbox && (
         <div className="drawpad-overlay" onClick={() => setLightbox(null)}>
