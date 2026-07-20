@@ -1,15 +1,33 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function DrawingPad({ onSave, onCancel }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const [color, setColor] = useState("#1b2a47");
+  const [lineWidth, setLineWidth] = useState(3);
+  const [size, setSize] = useState({ w: 800, h: 460 });
+
+  useEffect(() => {
+    const w = Math.round(Math.min(window.innerWidth * 0.9, 1400));
+    const h = Math.round(Math.min(window.innerHeight * 0.65, w * 0.55));
+    setSize({ w, h });
+  }, []);
+
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size.w, size.h);
+    }
+  }, [size]);
 
   function pos(e) {
     const rect = canvasRef.current.getBoundingClientRect();
     const point = e.touches ? e.touches[0] : e;
-    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    return { x: (point.clientX - rect.left) * scaleX, y: (point.clientY - rect.top) * scaleY };
   }
 
   function start(e) {
@@ -25,7 +43,7 @@ export default function DrawingPad({ onSave, onCancel }) {
     e.preventDefault();
     const ctx = canvasRef.current.getContext("2d");
     const { x, y } = pos(e);
-    ctx.lineWidth = 3;
+    ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
     ctx.strokeStyle = color;
     ctx.lineTo(x, y);
@@ -59,15 +77,29 @@ export default function DrawingPad({ onSave, onCancel }) {
             <button
               key={c}
               className="small"
-              style={{ background: c, width: 26, height: 26, padding: 0, borderRadius: "50%" }}
+              style={{
+                background: c,
+                width: 26,
+                height: 26,
+                padding: 0,
+                borderRadius: "50%",
+                outline: color === c ? "2px solid var(--teal)" : "none",
+                outlineOffset: 2,
+              }}
               onClick={() => setColor(c)}
             />
           ))}
+          <div style={{ width: 14 }} />
+          <button className={lineWidth === 2 ? "small" : "ghost small"} onClick={() => setLineWidth(2)}>Thin</button>
+          <button className={lineWidth === 3 ? "small" : "ghost small"} onClick={() => setLineWidth(3)}>Med</button>
+          <button className={lineWidth === 6 ? "small" : "ghost small"} onClick={() => setLineWidth(6)}>Thick</button>
         </div>
         <canvas
-          width={560}
-          height={360}
+          ref={canvasRef}
+          width={size.w}
+          height={size.h}
           className="drawpad-canvas"
+          style={{ width: "100%", height: "auto" }}
           onMouseDown={start}
           onMouseMove={move}
           onMouseUp={end}
@@ -75,15 +107,6 @@ export default function DrawingPad({ onSave, onCancel }) {
           onTouchStart={start}
           onTouchMove={move}
           onTouchEnd={end}
-          ref={(el) => {
-            canvasRef.current = el;
-            if (el && !el.dataset.inited) {
-              el.dataset.inited = "1";
-              const ctx = el.getContext("2d");
-              ctx.fillStyle = "#ffffff";
-              ctx.fillRect(0, 0, el.width, el.height);
-            }
-          }}
         />
         <div className="row" style={{ marginTop: 10 }}>
           <button className="ghost small" onClick={clear}>Clear</button>
