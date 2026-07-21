@@ -7,6 +7,7 @@ export default function NavBar({ active }) {
     <div className="navbar">
       <div className="navlinks">
         <Link href="/" className={active === "route" ? "navlink active" : "navlink"}>Route</Link>
+        <Link href="/dock" className="navlink dock-navlink">⚓ Dock</Link>
         <Link href="/notes" className={active === "notes" ? "navlink active" : "navlink"}>Notes</Link>
         <Link href="/plan" className={active === "plan" ? "navlink active" : "navlink"}>Study Plan</Link>
         <Link href="/how-it-works" className={active === "how" ? "navlink active" : "navlink"}>How It Works</Link>

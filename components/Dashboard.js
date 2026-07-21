@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { MODULES, STEP_DAYS, dayStr, phaseBoundaries, currentPhaseIndex } from "../lib/constants";
 import { uploadImage, publicUrl, deleteImage, newImagePath } from "../lib/storage";
+import TodayPlan from "./TodayPlan";
 
 export default function Dashboard({ session }) {
   const userId = session.user.id;
@@ -75,7 +76,7 @@ export default function Dashboard({ session }) {
 
     const { data: sessionRows } = await supabase
       .from("sessions")
-      .select("module_id, minutes")
+      .select("module_id, minutes, logged_at")
       .eq("user_id", userId);
     setSessions(sessionRows || []);
 
@@ -247,6 +248,8 @@ export default function Dashboard({ session }) {
           <div className="stat"><div className="num">{dueCards.length}</div><div className="lbl">Cards due</div></div>
         </div>
       </div>
+
+      <TodayPlan settings={settings} progress={progress} sessions={sessions} cards={cards} />
 
       <div className="pace-card">
         <div className="pace-top">

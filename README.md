@@ -49,9 +49,19 @@ Visit `http://localhost:3000`, sign in with your email, click the link Supabase 
 
 ## Pages
 
-- `/` — Route: pace calculator, module tracker, session logging, flashcard review + deck management.
+- `/` — Route: opens with "Orders of the day" (a prescriptive daily plan), then pace calculator, module tracker, session logging, flashcard review + deck management.
+- `/dock` — Dock Mode: full-screen, distraction-free card review. Swipe left = Again, right = Good, up = Easy (keyboard: space to reveal, 1/2/3 to grade).
 - `/notes` — free-form notes: text, photo uploads, and an in-browser drawing pad for sketching process flows.
 - `/plan` — the study plan itself (the four legs, module breakdown, retention rationale) as an always-available reference.
+- `/how-it-works` — explanation of the spaced-repetition scheduling.
+
+## Install as an app (PWA)
+
+The site is installable on any device — full screen, home-screen icon, instant load:
+- **iPhone/iPad**: open the site in Safari → Share → "Add to Home Screen".
+- **Android**: Chrome will offer "Add to Home screen" / "Install app" from the menu.
+- **Desktop**: Chrome/Edge show an install icon in the address bar.
+Long-press the installed icon for a shortcut straight to card review (Dock).
 
 Every table is scoped by Postgres row-level security to `auth.uid()`, so there's no extra access-control code to write as you add features — a signed-in user can only ever touch their own rows.
 

@@ -1,8 +1,25 @@
 import "./globals.css";
+import RegisterSW from "../components/RegisterSW";
 
 export const metadata = {
   title: "CSCP Route — Study Tracker",
   description: "Cross-device study tracker for the ASCM CSCP exam",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CSCP Route",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0B1220",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {
@@ -15,7 +32,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <RegisterSW />
+        {children}
+      </body>
     </html>
   );
 }

@@ -13,9 +13,14 @@
 html, body { padding: 0; margin: 0; }
 body {
   background: var(--bg);
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(79, 209, 197, 0.07), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(242, 169, 59, 0.05), transparent 55%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: 'Inter', sans-serif;
   padding: 28px 20px 60px;
+  min-height: 100vh;
 }
 h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
 .mono { font-family: 'JetBrains Mono', monospace; }
@@ -174,3 +179,81 @@ input[type=file] { color: var(--muted); font-size: 12px; }
 .plan-table th, .plan-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .plan-table th { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 11px; text-transform: uppercase; }
 .plan-lead { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
+
+/* ============ Today plan (Orders of the day) ============ */
+.today-card { position: relative; overflow: hidden; background: linear-gradient(140deg, #16233d, var(--panel)); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; margin-bottom: 20px; }
+.today-glow { position: absolute; top: -60px; right: -40px; width: 280px; height: 220px; background: radial-gradient(closest-side, rgba(79,209,197,.16), transparent); pointer-events: none; }
+.today-head { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; }
+.today-headline { font-size: 28px; margin-top: 4px; letter-spacing: -0.01em; }
+.today-sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.today-list { list-style: none; counter-reset: order; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.today-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid rgba(38,55,79,.6); }
+.today-item:first-child { border-top: none; }
+.today-icon { font-size: 15px; width: 22px; text-align: center; }
+.today-label { flex: 1; font-size: 14px; }
+.today-link { color: var(--text); text-decoration: none; border-bottom: 1px dashed var(--teal); }
+.today-link:hover { color: var(--teal); }
+.today-min { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+
+.dock-cta { display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--teal); color: var(--bg); font-weight: 700; font-size: 15px; text-decoration: none; padding: 14px 26px; border-radius: 12px; box-shadow: 0 0 24px rgba(79,209,197,.35); transition: transform .15s ease, box-shadow .15s ease; }
+.dock-cta:hover { transform: translateY(-1px); box-shadow: 0 0 34px rgba(79,209,197,.5); }
+.dock-cta-sub { font-size: 10.5px; font-weight: 600; opacity: .75; font-family: 'JetBrains Mono', monospace; }
+
+.dock-navlink { color: var(--teal); }
+
+/* ============ Dock Mode (the night watch) ============ */
+.dock { position: fixed; inset: 0; background: radial-gradient(1200px 700px at 50% -20%, #142138, #0B1220 65%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom)); z-index: 40; overflow: hidden; }
+.dock::after { content: ""; position: absolute; bottom: -140px; left: -10%; right: -10%; height: 260px; background: radial-gradient(closest-side, rgba(79,209,197,.08), transparent); pointer-events: none; }
+
+.dock-top { position: absolute; top: max(18px, env(safe-area-inset-top)); left: 20px; right: 20px; display: flex; align-items: center; gap: 14px; }
+.dock-progress-track { flex: 1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.dock-progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), #7BE3D8); border-radius: 2px; transition: width .35s ease; }
+.dock-count { font-size: 12px; color: var(--muted); }
+
+.dock-card { width: min(640px, 94vw); min-height: 300px; max-height: 62vh; overflow-y: auto; background: linear-gradient(160deg, #1B2A47, #141F36); border: 1px solid var(--line); border-radius: 20px; padding: 34px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: pointer; user-select: none; transition: transform .22s ease, opacity .22s ease, box-shadow .2s ease; box-shadow: 0 18px 50px rgba(0,0,0,.4); }
+.dock-card.leave-good { transform: translateX(120vw) rotate(8deg); opacity: 0; }
+.dock-card.leave-again { transform: translateX(-120vw) rotate(-8deg); opacity: 0; }
+.dock-card.leave-easy { transform: translateY(-110vh); opacity: 0; }
+.dock-card.hint-good { box-shadow: 0 0 0 2px var(--teal), 0 18px 50px rgba(0,0,0,.4); }
+.dock-card.hint-again { box-shadow: 0 0 0 2px var(--danger), 0 18px 50px rgba(0,0,0,.4); }
+.dock-card.hint-easy { box-shadow: 0 0 0 2px var(--amber), 0 18px 50px rgba(0,0,0,.4); }
+
+.dock-module { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); letter-spacing: .08em; text-transform: uppercase; }
+.dock-front { font-family: 'Space Grotesk', sans-serif; font-size: clamp(20px, 4.5vw, 30px); font-weight: 600; line-height: 1.3; }
+.dock-back { font-size: clamp(15px, 3.4vw, 19px); color: var(--teal); line-height: 1.5; border-top: 1px solid rgba(38,55,79,.7); padding-top: 16px; width: 100%; animation: dockReveal .25s ease; }
+@keyframes dockReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.dock-image { max-width: 100%; max-height: 30vh; border-radius: 10px; background: #fff; }
+.dock-reveal-hint { font-size: 12px; color: var(--muted); }
+
+.dock-reveal { margin-top: 26px; background: transparent; border: 1px solid var(--line); color: var(--text); padding: 14px 44px; font-size: 15px; border-radius: 12px; }
+.dock-reveal:hover { border-color: var(--teal); color: var(--teal); }
+
+.dock-grades { display: flex; gap: 12px; margin-top: 26px; width: min(640px, 94vw); }
+.dock-grade { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 16px 0 12px; font-size: 16px; font-weight: 700; border-radius: 14px; border: 1px solid transparent; }
+.dock-grade span { font-size: 10.5px; font-weight: 600; font-family: 'JetBrains Mono', monospace; opacity: .75; }
+.dock-grade.again { background: rgba(226,102,93,.14); color: var(--danger); border-color: rgba(226,102,93,.4); }
+.dock-grade.good { background: rgba(242,169,59,.14); color: var(--amber); border-color: rgba(242,169,59,.4); }
+.dock-grade.easy { background: rgba(79,209,197,.14); color: var(--teal); border-color: rgba(79,209,197,.4); }
+.dock-grade:hover { filter: brightness(1.25); }
+
+.dock-footer { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: center; }
+.dock-exit { color: var(--muted); font-size: 12px; text-decoration: none; }
+.dock-exit:hover { color: var(--text); }
+.dock-keys { font-size: 10.5px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.dock-empty { color: var(--muted); }
+
+.dock-done { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; animation: dockReveal .35s ease; }
+.dock-done-mark { font-size: 46px; filter: drop-shadow(0 0 18px rgba(79,209,197,.5)); }
+.dock-done-title { font-size: 34px; }
+.dock-done-sub { color: var(--muted); font-size: 14px; max-width: 420px; line-height: 1.55; }
+.dock-return { margin-top: 14px; background: var(--teal); color: var(--bg); font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-card, .dock-progress-fill, .dock-cta { transition: none; }
+  .dock-back, .dock-done { animation: none; }
+}
+@media (max-width: 520px) {
+  .today-headline { font-size: 23px; }
+  .dock-grades { gap: 8px; }
+  .dock-card { padding: 26px 20px; }
+}
