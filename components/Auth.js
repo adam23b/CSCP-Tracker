@@ -54,18 +54,18 @@ export default function Auth() {
         </>
       ) : (
         <>
-          <p>Enter the 6-digit code sent to <strong>{email}</strong>.</p>
+          <p>Enter the code sent to <strong>{email}</strong>.</p>
           <form className="auth-form" onSubmit={verifyCode}>
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
               required
-              placeholder="123456"
-              maxLength={6}
+              placeholder="12345678"
+              maxLength={8}
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              style={{ textAlign: "center", fontSize: 20, letterSpacing: "0.35em", fontFamily: "'JetBrains Mono', monospace" }}
+              style={{ textAlign: "center", fontSize: 20, letterSpacing: "0.28em", fontFamily: "'JetBrains Mono', monospace" }}
             />
             <button type="submit" disabled={busy || code.trim().length < 6}>
               {busy ? "Checking…" : "Sign in"}
