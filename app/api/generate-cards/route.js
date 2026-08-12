@@ -4,7 +4,10 @@ import { MODULES } from "../../../lib/constants";
 
 // Runs server-side only — the ANTHROPIC_API_KEY never reaches the browser.
 export const runtime = "nodejs";
-export const maxDuration = 60; // Web search + generation can take a while; give Vercel headroom.
+// Vercel Pro allows up to 300s. Generation is typically 25–90s (web search +
+// a large paste can be slow); the generous cap prevents 504 timeouts.
+// If you're on the Hobby plan instead, lower this to 60 (the Hobby ceiling).
+export const maxDuration = 300;
 
 // Module list + their official CSCP functional areas, for the prompt.
 const MODULE_LIST = MODULES.map(
