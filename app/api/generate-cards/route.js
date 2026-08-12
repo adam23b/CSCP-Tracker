@@ -13,30 +13,41 @@ const MODULE_LIST = MODULES.map(
 
 const areasFor = (id) => MODULES.find((m) => m.id === id)?.areas || [];
 
-const CARDS_SCHEMA = {
+const CARD_ITEM = {
   type: "object",
   additionalProperties: false,
   properties: {
-    module_id: { type: "integer", enum: [1, 2, 3, 4, 5, 6, 7, 8] },
-    functional_area: { type: "string" },
-    cards: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          front: { type: "string" },
-          back: { type: "string" },
-          topic: { type: "string" },
-          exam_priority: { type: "string", enum: ["high", "medium", "low"] },
-          priority_reason: { type: "string" },
-        },
-        required: ["front", "back", "topic", "exam_priority", "priority_reason"],
-      },
-    },
+    front: { type: "string" },
+    back: { type: "string" },
+    topic: { type: "string" },
+    exam_priority: { type: "string", enum: ["high", "medium", "low"] },
+    priority_reason: { type: "string" },
   },
-  required: ["module_id", "functional_area", "cards"],
+  required: ["front", "back", "topic", "exam_priority", "priority_reason"],
 };
+
+function buildSchema(summarize) {
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      module_id: { type: "integer", enum: [1, 2, 3, 4, 5, 6, 7, 8] },
+      functional_area: { type: "string" },
+      cards: { type: "array", items: CARD_ITEM },
+    },
+    required: ["module_id", "functional_area", "cards"],
+  };
+  if (summarize) {
+    schema.properties.note_title = { type: "string" };
+    schema.properties.summary = { type: "string" };
+    schema.required = [...schema.required, "note_title", "summary"];
+  }
+  return schema;
+}
+
+const SUMMARY_DIRECTIVE = `ALSO WRITE A STUDY-NOTE SUMMARY (fields "note_title" and "summary"):
+- "note_title": a short, specific title (e.g. "Forecasting — methods & error measures").
+- "summary": a concise, well-structured study note of the material. Capture the exam-relevant essentials — key definitions, formulas (with their variables), distinctions, and decision rules — organised under short plain-text headings and bullet lists. Do NOT use Markdown tables (the notes view shows plain text). Tighten and clarify the material; do NOT just copy the source text. This is saved to the student's notes for review.`;
 
 const SYSTEM_PROMPT = `You are an expert coach for the ASCM CSCP (Certified Supply Chain Professional) exam and an experienced spaced-repetition flashcard author. You turn a student's study material into flashcards.
 
@@ -107,6 +118,7 @@ export async function POST(request) {
     return Response.json({ error: "Paste a bit more text to generate cards from." }, { status: 400 });
   }
   const clipped = notes.slice(0, 24000);
+  const summarize = body?.summarize === true;
 
   try {
     const anthropic = new Anthropic({ apiKey });
@@ -117,10 +129,10 @@ export async function POST(request) {
         // "low" keeps latency safely under Vercel's 60s cap while still using web
         // search; Opus 5 stays strong at low effort. Bump to "medium" on Vercel Pro.
         effort: "low",
-        format: { type: "json_schema", schema: CARDS_SCHEMA },
+        format: { type: "json_schema", schema: buildSchema(summarize) },
       },
       tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
-      system: SYSTEM_PROMPT,
+      system: summarize ? `${SYSTEM_PROMPT}\n\n${SUMMARY_DIRECTIVE}` : SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
@@ -193,7 +205,12 @@ export async function POST(request) {
       return Response.json({ error: "No usable cards came back. Try different notes." }, { status: 502 });
     }
 
-    return Response.json({ moduleId, functionalArea, cards });
+    const summary =
+      summarize && typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+    const noteTitle =
+      summarize && typeof parsed.note_title === "string" ? parsed.note_title.trim() : "";
+
+    return Response.json({ moduleId, functionalArea, cards, summary, noteTitle });
   } catch (err) {
     const status = err?.status === 429 ? 429 : 502;
     const message =

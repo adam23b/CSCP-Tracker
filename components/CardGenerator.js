@@ -12,6 +12,12 @@ export default function CardGenerator({ session }) {
   const [moduleId, setModuleId] = useState("1");
   const [functionalArea, setFunctionalArea] = useState("");
   const [autoDetected, setAutoDetected] = useState(false);
+  const [summarize, setSummarize] = useState(false); // also write a study-note summary
+
+  // Summary returned for review before saving to Notes
+  const [summary, setSummary] = useState("");
+  const [noteTitle, setNoteTitle] = useState("");
+  const [keepSummary, setKeepSummary] = useState(true);
 
   const areasFor = (id) => MODULES.find((m) => m.id === parseInt(id))?.areas || [];
   const [generating, setGenerating] = useState(false);
@@ -21,6 +27,7 @@ export default function CardGenerator({ session }) {
   const [candidates, setCandidates] = useState(null); // null = nothing generated yet
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [savedNote, setSavedNote] = useState(false);
 
   async function generate() {
     if (notes.trim().length < 20) {
@@ -29,6 +36,7 @@ export default function CardGenerator({ session }) {
     }
     setError("");
     setSavedCount(0);
+    setSavedNote(false);
     setGenerating(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -39,7 +47,7 @@ export default function CardGenerator({ session }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token || ""}`,
         },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes, summarize }),
       });
       const payload = await res.json();
       if (!res.ok) {
@@ -52,6 +60,9 @@ export default function CardGenerator({ session }) {
       }
       const detectedAreas = areasFor(payload.moduleId || moduleId);
       setFunctionalArea(payload.functionalArea || detectedAreas[0] || "");
+      setSummary(payload.summary || "");
+      setNoteTitle(payload.noteTitle || "");
+      setKeepSummary(!!payload.summary);
       setCandidates((payload.cards || []).map((c) => ({ ...c, keep: true })));
     } catch {
       setError("Couldn't reach the generator. Check your connection and try again.");
@@ -103,11 +114,29 @@ export default function CardGenerator({ session }) {
         setError("Couldn't save the cards. Try again.");
         return;
       }
+
+      let noteSaved = false;
+      if (keepSummary && summary.trim()) {
+        const title = (noteTitle.trim() || `${functionalArea || "Summary"}`).slice(0, 200);
+        const { error: noteError } = await supabase.from("notes").insert({
+          user_id: userId,
+          module_id: parseInt(moduleId),
+          title,
+          content: summary.trim(),
+          image_paths: [],
+        });
+        noteSaved = !noteError;
+      }
+
       setSavedCount(rows.length);
+      setSavedNote(noteSaved);
       setCandidates(null);
       setNotes("");
       setAutoDetected(false);
       setFunctionalArea("");
+      setSummary("");
+      setNoteTitle("");
+      setSummarize(false);
     } finally {
       setSaving(false);
     }
@@ -133,6 +162,10 @@ export default function CardGenerator({ session }) {
             and flags how likely each is to be tested. You review and edit before anything is saved.
             Generation takes ~20–30 seconds (it checks the web to weight exam priority).
           </div>
+          <label className="gen-summarize">
+            <input type="checkbox" checked={summarize} onChange={(e) => setSummarize(e.target.checked)} />
+            Also write a study-note summary into Notes
+          </label>
           <div className="row">
             <button onClick={generate} disabled={generating}>
               {generating ? "Generating…" : "Generate flashcards"}
@@ -142,6 +175,7 @@ export default function CardGenerator({ session }) {
           {savedCount > 0 && (
             <div className="gen-success">
               ✓ Added {savedCount} card{savedCount === 1 ? "" : "s"} to the deck — they're due today in the Dock.
+              {savedNote && " A study-note summary was saved to Notes."}
             </div>
           )}
         </div>
@@ -190,6 +224,32 @@ export default function CardGenerator({ session }) {
                 ))}
               </select>
             </div>
+
+            {summary && (
+              <div className="gen-summary">
+                <div className="gen-card-head">
+                  <label className="gen-keep">
+                    <input type="checkbox" checked={keepSummary} onChange={() => setKeepSummary((k) => !k)} />
+                    Save this summary to Notes
+                  </label>
+                  <span className="gen-prio gen-prio-medium">Study note</span>
+                </div>
+                <label className="gen-field-label">Note title</label>
+                <input
+                  className="gen-summary-title"
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  placeholder="Note title"
+                />
+                <label className="gen-field-label">Summary</label>
+                <textarea
+                  className="gen-field"
+                  style={{ minHeight: 160 }}
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                />
+              </div>
+            )}
 
             {candidates.length === 0 ? (
               <div className="empty">No cards. Add one below or generate again.</div>
