@@ -11,7 +11,8 @@ const SWIPE_Y = 70;
 
 export default function DockMode({ session }) {
   const userId = session.user.id;
-  const [queue, setQueue] = useState(null); // null = loading
+  const [allCards, setAllCards] = useState(null); // every card, loaded once
+  const [queue, setQueue] = useState(null); // null = loading; the active filtered session
   const [totalAtStart, setTotalAtStart] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [leaving, setLeaving] = useState(null); // 'again' | 'good' | 'easy' during exit animation
@@ -20,27 +21,78 @@ export default function DockMode({ session }) {
   const touchStart = useRef(null);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
 
+  // --- Filters ---
+  const [filterModule, setFilterModule] = useState(0); // 0 = all modules
+  const [filterArea, setFilterArea] = useState(""); // "" = all areas
+  const [includeNotDue, setIncludeNotDue] = useState(false); // cram: ignore due date
+  const [filterOpen, setFilterOpen] = useState(false);
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function load() {
-    const today = dayStr(new Date());
     const { data } = await supabase
       .from("cards")
       .select("*")
       .eq("user_id", userId)
-      .lte("due_date", today)
       .order("due_date", { ascending: true });
-    setQueue(data || []);
-    setTotalAtStart((data || []).length);
+    const cards = data || [];
+    setAllCards(cards);
+    applyFilter(cards, filterModule, filterArea, includeNotDue);
+  }
+
+  function buildQueue(cards, mod, area, notDue) {
+    const today = dayStr(new Date());
+    return cards.filter((c) => {
+      if (!notDue && c.due_date > today) return false;
+      if (mod && c.module_id !== mod) return false;
+      if (area && (c.functional_area || "") !== area) return false;
+      return true;
+    });
+  }
+
+  // Rebuilding the queue starts a fresh focused session.
+  function applyFilter(cards, mod, area, notDue) {
+    const q = buildQueue(cards || [], mod, area, notDue);
+    setQueue(q);
+    setTotalAtStart(q.length);
+    setGraded({ again: 0, good: 0, easy: 0 });
+    setRevealed(false);
+    setLeaving(null);
+    setDrag({ x: 0, y: 0, active: false });
+  }
+
+  function changeModule(v) {
+    const mod = parseInt(v);
+    setFilterModule(mod);
+    setFilterArea("");
+    applyFilter(allCards, mod, "", includeNotDue);
+  }
+  function changeArea(v) {
+    setFilterArea(v);
+    applyFilter(allCards, filterModule, v, includeNotDue);
+  }
+  function changeNotDue(v) {
+    setIncludeNotDue(v);
+    applyFilter(allCards, filterModule, filterArea, v);
   }
 
   const card = queue && queue.length > 0 ? queue[0] : null;
   const done = queue !== null && queue.length === 0;
   const reviewed = graded.again + graded.good + graded.easy;
   const progress = totalAtStart > 0 ? reviewed / totalAtStart : 1;
+  const filterActive = filterModule !== 0 || filterArea !== "";
+
+  const scopeLabel = useMemo(() => {
+    if (filterArea) return filterArea;
+    if (filterModule) {
+      const m = MODULES.find((x) => x.id === filterModule);
+      return `M${filterModule} — ${m?.title.split(",")[0]}`;
+    }
+    return "All due today";
+  }, [filterModule, filterArea]);
 
   async function grade(result) {
     if (!card || leaving) return;
@@ -55,12 +107,14 @@ export default function DockMode({ session }) {
     const due_date = dayStr(d);
 
     supabase.from("cards").update({ step, due_date }).eq("id", card.id).then(() => {});
+    // Keep the master list in sync so re-filtering reflects the new schedule.
+    setAllCards((cs) => (cs || []).map((x) => (x.id === card.id ? { ...x, step, due_date } : x)));
 
     setTimeout(() => {
       setGraded((g) => ({ ...g, [result]: g[result] + 1 }));
       setQueue((q) => {
         const rest = q.slice(1);
-        // "Again" cards return to the back of today's queue so the session ends only when everything sticks.
+        // "Again" cards return to the back of the queue so the session ends only when everything sticks.
         return result === "again" ? [...rest, { ...card, step, due_date }] : rest;
       });
       setRevealed(false);
@@ -126,6 +180,36 @@ export default function DockMode({ session }) {
     drag.active && drag.x > SWIPE_X ? "hint-good" :
     drag.active && drag.x < -SWIPE_X ? "hint-again" : "";
 
+  const areaOptions = filterModule ? MODULES.find((m) => m.id === filterModule)?.areas || [] : [];
+
+  const filterBar = (
+    <div className="dock-filter">
+      <button className="dock-filter-toggle" onClick={() => setFilterOpen((o) => !o)}>
+        <span className="dock-filter-label">{filterOpen ? "▾" : "▸"} Studying: {scopeLabel}{includeNotDue ? " · cram" : ""}</span>
+      </button>
+      {filterOpen && (
+        <div className="dock-filter-panel">
+          <select value={filterModule} onChange={(e) => changeModule(e.target.value)}>
+            <option value={0}>All modules</option>
+            {MODULES.map((m) => (
+              <option key={m.id} value={m.id}>M{m.id} — {m.title.split(",")[0]}</option>
+            ))}
+          </select>
+          <select value={filterArea} onChange={(e) => changeArea(e.target.value)} disabled={!filterModule}>
+            <option value="">{filterModule ? "All functional areas" : "Pick a module first"}</option>
+            {areaOptions.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <label className="dock-filter-check">
+            <input type="checkbox" checked={includeNotDue} onChange={(e) => changeNotDue(e.target.checked)} />
+            Include not-yet-due (cram this scope)
+          </label>
+        </div>
+      )}
+    </div>
+  );
+
   // --- Loading ---
   if (queue === null) {
     return (
@@ -138,17 +222,28 @@ export default function DockMode({ session }) {
   // --- Complete ---
   if (done) {
     const mins = Math.max(Math.round((Date.now() - startedAt) / 60000), 1);
+    let title, sub;
+    if (totalAtStart === 0) {
+      title = "Nothing to review";
+      if (filterActive && !includeNotDue) {
+        sub = `No cards due in ${scopeLabel}. Tick "include not-yet-due" above to drill this scope now.`;
+      } else if (filterActive) {
+        sub = `No cards in ${scopeLabel} yet. Generate some, or widen the filter.`;
+      } else {
+        sub = "No cards waiting today. Add cards as you study and they'll surface here when it's time.";
+      }
+    } else {
+      title = "Queue clear";
+      sub = `${reviewed} review${reviewed === 1 ? "" : "s"} in ${mins} min · ${graded.easy} easy · ${graded.good} good · ${graded.again} again`;
+    }
     return (
       <div className="dock">
         <DockTop progress={1} reviewed={reviewed} total={totalAtStart} />
+        {filterBar}
         <div className="dock-done">
           <div className="dock-done-mark">⚓</div>
-          <h1 className="dock-done-title">{totalAtStart === 0 ? "Nothing due" : "Queue clear"}</h1>
-          <p className="dock-done-sub">
-            {totalAtStart === 0
-              ? "No cards waiting today. Add cards as you study and they'll surface here when it's time."
-              : `${reviewed} review${reviewed === 1 ? "" : "s"} in ${mins} min · ${graded.easy} easy · ${graded.good} good · ${graded.again} again`}
-          </p>
+          <h1 className="dock-done-title">{title}</h1>
+          <p className="dock-done-sub">{sub}</p>
           <Link href="/" className="dock-return">Back to the Route</Link>
         </div>
       </div>
@@ -159,6 +254,7 @@ export default function DockMode({ session }) {
   return (
     <div className="dock">
       <DockTop progress={progress} reviewed={reviewed} total={totalAtStart} />
+      {filterBar}
 
       <div
         className={`dock-card ${leaving ? "leave-" + leaving : ""} ${hintClass}`}
