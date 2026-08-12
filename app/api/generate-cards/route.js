@@ -1,24 +1,24 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { MODULES } from "../../../lib/constants";
 
 // Runs server-side only — the ANTHROPIC_API_KEY never reaches the browser.
 export const runtime = "nodejs";
 export const maxDuration = 60; // Web search + generation can take a while; give Vercel headroom.
 
-const MODULE_LIST = `1. Supply Chains, Demand Management & Forecasting
-2. Global Supply Chain Networks
-3. Sourcing Products and Services
-4. Internal Operations and Inventory
-5. Forward and Reverse Logistics
-6. Supply Chain Relationships
-7. Supply Chain Risk
-8. Optimization, Sustainability & Technology`;
+// Module list + their official CSCP functional areas, for the prompt.
+const MODULE_LIST = MODULES.map(
+  (m) => `${m.id}. ${m.title}\n   Functional areas: ${m.areas.join("; ")}`,
+).join("\n");
+
+const areasFor = (id) => MODULES.find((m) => m.id === id)?.areas || [];
 
 const CARDS_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
     module_id: { type: "integer", enum: [1, 2, 3, 4, 5, 6, 7, 8] },
+    functional_area: { type: "string" },
     cards: {
       type: "array",
       items: {
@@ -35,7 +35,7 @@ const CARDS_SCHEMA = {
       },
     },
   },
-  required: ["module_id", "cards"],
+  required: ["module_id", "functional_area", "cards"],
 };
 
 const SYSTEM_PROMPT = `You are an expert coach for the ASCM CSCP (Certified Supply Chain Professional) exam and an experienced spaced-repetition flashcard author. You turn a student's study material into flashcards.
@@ -44,12 +44,13 @@ YOUR PRIORITIES, IN ORDER:
 1. Passing the CSCP exam. This is the overriding goal. Favour content that is testable on the CSCP exam over content that is merely interesting or comprehensive.
 2. Durable understanding of the topic — as the means to (1), not a competing goal.
 
-The 8 CSCP modules (map the material to exactly one best-fit module and return its number as "module_id"):
+The 8 CSCP modules and their official study-guide functional areas (map the material to exactly one best-fit module, and to one functional area within that module):
 ${MODULE_LIST}
 
-DETECT MODULE + TOPIC AUTOMATICALLY:
+DETECT MODULE + FUNCTIONAL AREA + TOPIC AUTOMATICALLY:
 - Infer the single best-fit module_id from the content.
-- Give every card a short "topic" tag (2-4 words) naming the specific subject within the module (e.g. "EOQ", "Safety stock", "Bullwhip effect", "Incoterms").
+- Set "functional_area" to the EXACT official functional-area name (copied verbatim from the list above for the chosen module) that best matches the material. Use one functional area for the whole set.
+- Give every card a short "topic" tag (2-4 words) naming the specific subject within that functional area (e.g. "EOQ", "Safety stock", "Bullwhip effect", "Incoterms"). The topic is more granular than the functional area.
 
 WRITE CARDS FOR RETENTION, NOT RECOGNITION — do not just copy sentences from the source:
 - One idea per card (minimum-information principle). Split compound facts into separate cards.
@@ -63,7 +64,7 @@ WRITE CARDS FOR RETENTION, NOT RECOGNITION — do not just copy sentences from t
 
 EXAM-PRIORITY FLAG (set "exam_priority" to "high" | "medium" | "low" for each card, with a one-line "priority_reason"):
 - Base it on how heavily the topic is weighted and emphasised on the CSCP exam: the module's share of the exam, whether it's a core definition/formula/framework CSCP loves to test, and how often public CSCP study resources stress it.
-- Use web_search at least once (up to 3 times) to check how public CSCP study guides and prep resources weight or emphasise these domains, and let that inform the flag.
+- Use web_search once or twice to check how public CSCP study guides and prep resources weight or emphasise these domains, and let that inform the flag.
 - NEVER search for, request, or reproduce actual or leaked exam questions ("braindumps"). Base priority on published exam-content weightings and study emphasis only.
 - "high" = very likely to be tested / core testable concept; "medium" = supporting concept worth knowing; "low" = background or edge detail.
 
@@ -118,7 +119,7 @@ export async function POST(request) {
         effort: "low",
         format: { type: "json_schema", schema: CARDS_SCHEMA },
       },
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -163,6 +164,16 @@ export async function POST(request) {
         ? parsed.module_id
         : null;
 
+    // Normalize functional_area to the official casing if it matches the module's list.
+    let functionalArea = null;
+    if (typeof parsed.functional_area === "string" && parsed.functional_area.trim()) {
+      const raw = parsed.functional_area.trim();
+      const official = areasFor(moduleId).find(
+        (a) => a.toLowerCase() === raw.toLowerCase(),
+      );
+      functionalArea = official || raw;
+    }
+
     const cards = Array.isArray(parsed.cards)
       ? parsed.cards
           .filter((c) => c && typeof c.front === "string" && typeof c.back === "string")
@@ -182,7 +193,7 @@ export async function POST(request) {
       return Response.json({ error: "No usable cards came back. Try different notes." }, { status: 502 });
     }
 
-    return Response.json({ moduleId, cards });
+    return Response.json({ moduleId, functionalArea, cards });
   } catch (err) {
     const status = err?.status === 429 ? 429 : 502;
     const message =

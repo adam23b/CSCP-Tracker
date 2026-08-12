@@ -10,7 +10,10 @@ export default function CardGenerator({ session }) {
 
   const [notes, setNotes] = useState("");
   const [moduleId, setModuleId] = useState("1");
+  const [functionalArea, setFunctionalArea] = useState("");
   const [autoDetected, setAutoDetected] = useState(false);
+
+  const areasFor = (id) => MODULES.find((m) => m.id === parseInt(id))?.areas || [];
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,6 +50,8 @@ export default function CardGenerator({ session }) {
         setModuleId(String(payload.moduleId));
         setAutoDetected(true);
       }
+      const detectedAreas = areasFor(payload.moduleId || moduleId);
+      setFunctionalArea(payload.functionalArea || detectedAreas[0] || "");
       setCandidates((payload.cards || []).map((c) => ({ ...c, keep: true })));
     } catch {
       setError("Couldn't reach the generator. Check your connection and try again.");
@@ -84,6 +89,7 @@ export default function CardGenerator({ session }) {
       const rows = keptCards.map((c) => ({
         user_id: userId,
         module_id: parseInt(moduleId),
+        functional_area: functionalArea || null,
         front: c.front.trim(),
         back: c.back.trim(),
         topic: c.topic.trim() || null,
@@ -101,6 +107,7 @@ export default function CardGenerator({ session }) {
       setCandidates(null);
       setNotes("");
       setAutoDetected(false);
+      setFunctionalArea("");
     } finally {
       setSaving(false);
     }
@@ -158,9 +165,28 @@ export default function CardGenerator({ session }) {
               <label className="gen-field-label" style={{ margin: 0 }}>
                 Module {autoDetected && <span className="gen-auto">auto-detected</span>}
               </label>
-              <select value={moduleId} onChange={(e) => { setModuleId(e.target.value); setAutoDetected(false); }}>
+              <select
+                value={moduleId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setModuleId(next);
+                  setAutoDetected(false);
+                  setFunctionalArea(areasFor(next)[0] || "");
+                }}
+              >
                 {MODULES.map((m) => (
                   <option key={m.id} value={m.id}>M{m.id} — {m.title.split(",")[0]}</option>
+                ))}
+              </select>
+            </div>
+            <div className="gen-module-row">
+              <label className="gen-field-label" style={{ margin: 0 }}>Functional area</label>
+              <select value={functionalArea} onChange={(e) => setFunctionalArea(e.target.value)}>
+                {!areasFor(moduleId).includes(functionalArea) && functionalArea && (
+                  <option value={functionalArea}>{functionalArea}</option>
+                )}
+                {areasFor(moduleId).map((a) => (
+                  <option key={a} value={a}>{a}</option>
                 ))}
               </select>
             </div>
@@ -234,7 +260,8 @@ export default function CardGenerator({ session }) {
               <button className="ghost" onClick={addBlankCard}>Add a card</button>
             </div>
             <div className="gen-hint" style={{ marginTop: 8 }}>
-              All kept cards are saved to <strong>M{moduleId} — {moduleTitle(moduleId)}</strong>.
+              All kept cards are saved to <strong>M{moduleId} — {moduleTitle(moduleId)}</strong>
+              {functionalArea ? <> · <strong>{functionalArea}</strong></> : ""}.
             </div>
           </>
         )}

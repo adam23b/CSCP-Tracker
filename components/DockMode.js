@@ -169,7 +169,7 @@ export default function DockMode({ session }) {
         onClick={() => !revealed && setRevealed(true)}
       >
         <div className="dock-module">
-          {`M${card.module_id} · ${moduleName}`}{card.topic ? ` · ${card.topic}` : ""}
+          {`M${card.module_id}`}{card.functional_area ? ` · ${card.functional_area}` : ` · ${moduleName}`}{card.topic ? ` · ${card.topic}` : ""}
           {card.exam_priority === "high" && <span className="dock-prio">★ High-yield</span>}
         </div>
         <div className="dock-front">{card.front}</div>
