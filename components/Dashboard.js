@@ -452,7 +452,10 @@ function DeckRow({ card, editing, onEdit, onCancel, onSave, onDelete }) {
   return (
     <div className="deck-row">
       <div className="dr-top">
-        <div className="dr-tag">M{card.module_id} · {m?.title.split(",")[0]} · due {card.due_date}</div>
+        <div className="dr-tag">
+          M{card.module_id} · {m?.title.split(",")[0]}{card.topic ? ` · ${card.topic}` : ""} · due {card.due_date}
+          {card.exam_priority === "high" && <span className="dr-prio"> ★ high-yield</span>}
+        </div>
         <div className="dr-actions">
           <button className="ghost small" onClick={onEdit}>Edit</button>
           <button className="danger small" onClick={() => onDelete(card.id)}>Delete</button>

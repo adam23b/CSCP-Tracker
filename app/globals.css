@@ -276,3 +276,17 @@ input[type=file] { color: var(--muted); font-size: 12px; }
 .gen-keep input { accent-color: var(--teal); width: 15px; height: 15px; cursor: pointer; }
 .gen-field-label { display: block; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--amber); text-transform: uppercase; letter-spacing: .06em; margin: 6px 0 3px; }
 .gen-field { width: 100%; min-height: 46px; resize: vertical; }
+.gen-head-right { display: flex; align-items: center; gap: 8px; }
+.gen-meta-row { display: flex; gap: 8px; margin-bottom: 4px; }
+.gen-topic { flex: 1; font-size: 12px; }
+.gen-prio-select { font-size: 12px; }
+.gen-reason { font-size: 11px; color: var(--muted); margin-top: 6px; font-style: italic; }
+.gen-module-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.gen-module-row select { flex: 1; }
+.gen-auto { font-size: 9px; color: var(--teal); background: rgba(79,209,197,.14); padding: 1px 6px; border-radius: 8px; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.gen-prio { font-size: 10px; font-family: 'JetBrains Mono', monospace; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.gen-prio-high { color: var(--bg); background: var(--amber); }
+.gen-prio-medium { color: var(--teal); background: rgba(79,209,197,.16); }
+.gen-prio-low { color: var(--muted); background: var(--panel-alt); }
+.dock-prio { margin-left: 8px; color: var(--amber); font-weight: 700; }
+.dr-prio { color: var(--amber); font-weight: 600; }

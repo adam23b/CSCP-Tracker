@@ -168,7 +168,10 @@ export default function DockMode({ session }) {
         onTouchEnd={onTouchEnd}
         onClick={() => !revealed && setRevealed(true)}
       >
-        <div className="dock-module">{`M${card.module_id} · ${moduleName}`}</div>
+        <div className="dock-module">
+          {`M${card.module_id} · ${moduleName}`}{card.topic ? ` · ${card.topic}` : ""}
+          {card.exam_priority === "high" && <span className="dock-prio">★ High-yield</span>}
+        </div>
         <div className="dock-front">{card.front}</div>
         {card.image_path && <img className="dock-image" src={publicUrl(card.image_path)} alt="" />}
         {revealed ? (
