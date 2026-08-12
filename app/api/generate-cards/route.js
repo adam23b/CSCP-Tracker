@@ -129,9 +129,10 @@ export async function POST(request) {
       model: "claude-opus-5",
       max_tokens: 16000,
       output_config: {
-        // "low" keeps latency safely under Vercel's 60s cap while still using web
-        // search; Opus 5 stays strong at low effort. Bump to "medium" on Vercel Pro.
-        effort: "low",
+        // "medium" for richer, more numerous cards. Runs ~40-90s, which the 300s
+        // maxDuration (Vercel Pro) comfortably covers. Drop to "low" for faster,
+        // leaner generation (and required if you move to the 60s Hobby plan).
+        effort: "medium",
         format: { type: "json_schema", schema: buildSchema(summarize) },
       },
       tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
