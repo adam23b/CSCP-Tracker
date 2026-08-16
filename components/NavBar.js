@@ -20,6 +20,7 @@ export default function NavBar({ active }) {
         <Link href="/dock" className="navlink dock-navlink">⚓ Dock</Link>
         <Link href="/notes" className={active === "notes" ? "navlink active" : "navlink"}>Notes</Link>
         <Link href="/generate" className={active === "generate" ? "navlink active" : "navlink"}>Generate</Link>
+        <Link href="/readiness" className={active === "readiness" ? "navlink active" : "navlink"}>Readiness</Link>
         <Link href="/plan" className={active === "plan" ? "navlink active" : "navlink"}>Study Plan</Link>
         <Link href="/how-it-works" className={active === "how" ? "navlink active" : "navlink"}>How It Works</Link>
         {isAdmin && <Link href="/settings" className={active === "settings" ? "navlink active" : "navlink"}>Settings</Link>}
