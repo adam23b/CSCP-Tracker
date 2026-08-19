@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
 import { MODULES, STEP_DAYS, dayStr } from "../lib/constants";
 import { publicUrl } from "../lib/storage";
+import ExplainModal from "./ExplainModal";
 
 // Swipe thresholds (px)
 const SWIPE_X = 80;
@@ -20,6 +21,35 @@ export default function DockMode({ session }) {
   const [graded, setGraded] = useState({ again: 0, good: 0, easy: 0 });
   const touchStart = useRef(null);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
+
+  // Auto-logging: tally reviews per module across the whole Dock visit.
+  const reviewsByModuleRef = useRef({});
+  const loggedRef = useRef(false);
+  const [explainCard, setExplainCard] = useState(null);
+
+  // Log a study session (split across modules touched) when leaving the Dock.
+  async function flushSession() {
+    if (loggedRef.current) return;
+    const tally = reviewsByModuleRef.current;
+    const mods = Object.keys(tally);
+    const totalReviews = mods.reduce((a, k) => a + tally[k], 0);
+    if (totalReviews === 0) return;
+    loggedRef.current = true;
+    const elapsedMin = (Date.now() - startedAt) / 60000;
+    // Cap by review count so idle time doesn't inflate the log; floor at 1 min.
+    const cappedTotal = Math.min(Math.max(Math.round(elapsedMin), 1), totalReviews * 3);
+    const rows = mods.map((k) => ({
+      user_id: userId,
+      module_id: parseInt(k),
+      minutes: Math.max(Math.round((cappedTotal * tally[k]) / totalReviews), 1),
+    }));
+    await supabase.from("sessions").insert(rows);
+  }
+
+  useEffect(() => {
+    return () => { flushSession(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Filters ---
   const [filterModule, setFilterModule] = useState(0); // 0 = all modules
@@ -96,6 +126,7 @@ export default function DockMode({ session }) {
 
   async function grade(result) {
     if (!card || leaving) return;
+    reviewsByModuleRef.current[card.module_id] = (reviewsByModuleRef.current[card.module_id] || 0) + 1;
     setLeaving(result);
 
     let step = card.step;
@@ -244,6 +275,9 @@ export default function DockMode({ session }) {
           <div className="dock-done-mark">⚓</div>
           <h1 className="dock-done-title">{title}</h1>
           <p className="dock-done-sub">{sub}</p>
+          {Object.keys(reviewsByModuleRef.current).length > 0 && (
+            <div className="dock-autolog">✓ Your review time logs automatically to your study plan.</div>
+          )}
           <Link href="/" className="dock-return">Back to the Route</Link>
         </div>
       </div>
@@ -277,6 +311,12 @@ export default function DockMode({ session }) {
         )}
       </div>
 
+      {revealed && (
+        <button className="dock-explain-open" onClick={() => setExplainCard(card)}>
+          💬 Ask Claude about this card
+        </button>
+      )}
+
       {revealed ? (
         <div className="dock-grades">
           <button className="dock-grade again" onClick={() => grade("again")}>
@@ -297,6 +337,10 @@ export default function DockMode({ session }) {
         <Link href="/" className="dock-exit">Exit</Link>
         <span className="dock-keys">swipe ← again · → good · ↑ easy</span>
       </div>
+
+      {explainCard && (
+        <ExplainModal card={explainCard} userId={userId} onClose={() => setExplainCard(null)} />
+      )}
     </div>
   );
 }

@@ -351,3 +351,21 @@ button.rd-row:hover { background: var(--panel-alt); }
   .rd-overall { flex-direction: column-reverse; align-items: stretch; text-align: left; }
   .rd-ring { align-self: center; }
 }
+
+/* --- Ask Claude (explain a card) + auto-log --- */
+.dock-explain-open { margin-top: 18px; background: transparent; border: 1px solid var(--line); color: var(--teal); border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 500; }
+.dock-explain-open:hover:not(:disabled) { background: rgba(79,209,197,.1); filter: none; }
+.dock-autolog { color: var(--muted); font-size: 12px; margin: 10px 0 2px; }
+
+.ex-overlay { position: fixed; inset: 0; background: rgba(6,11,20,.78); display: flex; align-items: center; justify-content: center; z-index: 60; padding: 16px; }
+.ex-box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; width: min(640px, 96vw); max-height: 88vh; overflow-y: auto; text-align: left; }
+.ex-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.ex-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 15px; }
+.ex-card { background: var(--panel-alt); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+.ex-front { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.ex-back { font-size: 13px; color: var(--teal); }
+.ex-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ex-ask-row { display: flex; gap: 8px; }
+.ex-ask-row input { flex: 1; }
+.ex-loading { color: var(--muted); font-size: 13px; margin-top: 14px; }
+.ex-answer { margin-top: 14px; font-size: 13.5px; line-height: 1.6; color: var(--text); white-space: pre-wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
