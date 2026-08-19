@@ -347,6 +347,14 @@ button.rd-row:hover { background: var(--panel-alt); }
 .rd-bar-fill.rd-needswork { background: var(--danger); }
 .rd-bar-fill.rd-none { background: transparent; }
 .rd-bar-target { position: absolute; top: 0; bottom: 0; left: 80%; width: 2px; background: rgba(226,232,240,.4); }
+.rd-quiz { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--amber); background: rgba(242,169,59,.12); border-radius: 8px; padding: 1px 6px; flex-shrink: 0; }
+.rd-edit-hint { font-weight: 400; font-size: 11px; color: var(--muted); font-family: 'Inter', sans-serif; }
+.rd-editor { display: flex; flex-direction: column; gap: 14px; max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+.rd-edit-mtitle { font-size: 12px; font-weight: 600; color: var(--amber); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+.rd-edit-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.rd-edit-area { flex: 1; font-size: 12.5px; }
+.rd-edit-row input { width: 64px; text-align: right; }
+.rd-edit-pct { color: var(--muted); font-size: 12px; width: 12px; }
 @media (max-width: 520px) {
   .rd-overall { flex-direction: column-reverse; align-items: stretch; text-align: left; }
   .rd-ring { align-self: center; }
@@ -369,3 +377,30 @@ button.rd-row:hover { background: var(--panel-alt); }
 .ex-ask-row input { flex: 1; }
 .ex-loading { color: var(--muted); font-size: 13px; margin-top: 14px; }
 .ex-answer { margin-top: 14px; font-size: 13.5px; line-height: 1.6; color: var(--text); white-space: pre-wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+
+/* --- Practice quiz --- */
+.pr-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.pr-progress { color: var(--amber); }
+.pr-scope { color: var(--muted); }
+.pr-scenario { font-size: 15px; line-height: 1.55; margin-bottom: 16px; }
+.pr-options { display: flex; flex-direction: column; gap: 8px; }
+.pr-option { display: flex; align-items: flex-start; gap: 10px; text-align: left; background: var(--panel-alt); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; font-weight: 400; line-height: 1.4; cursor: pointer; }
+.pr-option:hover:not(:disabled) { filter: none; border-color: var(--teal); }
+.pr-option:disabled { cursor: default; opacity: 1; }
+.pr-opt-letter { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+.pr-correct { border-color: var(--teal); background: rgba(79,209,197,.14); }
+.pr-correct .pr-opt-letter { color: var(--teal); }
+.pr-wrong { border-color: var(--danger); background: rgba(239,68,68,.12); }
+.pr-wrong .pr-opt-letter { color: var(--danger); }
+.pr-rationale { margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; }
+.pr-rationale strong { color: var(--amber); }
+.pr-score { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 16px; }
+.pr-score-num { font-family: 'Space Grotesk', sans-serif; font-size: 40px; font-weight: 700; color: var(--teal); }
+.pr-score-sub { color: var(--muted); font-size: 14px; }
+.pr-review { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+.pr-rev { background: var(--panel-alt); border-radius: 10px; padding: 12px 14px; }
+.pr-rev-q { font-size: 13px; font-weight: 500; line-height: 1.5; }
+.pr-ok { color: var(--teal); font-weight: 700; }
+.pr-no { color: var(--danger); font-weight: 700; }
+.pr-rev-a { font-size: 12px; color: var(--teal); margin: 6px 0; }
+.pr-rev-r { font-size: 12px; color: var(--muted); line-height: 1.55; }
