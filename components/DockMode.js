@@ -179,6 +179,9 @@ export default function DockMode({ session }) {
   // --- Keyboard: space/enter reveal, 1/2/3 grade ---
   useEffect(() => {
     function onKey(e) {
+      // Don't hijack keys while typing in a field or when the explain modal is open.
+      const el = e.target;
+      if (explainCard || (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable))) return;
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         if (!revealed && card) setRevealed(true);
@@ -191,7 +194,7 @@ export default function DockMode({ session }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealed, card, leaving]);
+  }, [revealed, card, leaving, explainCard]);
 
   const moduleName = useMemo(() => {
     if (!card) return "";
