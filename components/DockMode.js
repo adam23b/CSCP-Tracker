@@ -26,6 +26,13 @@ export default function DockMode({ session }) {
   const reviewsByModuleRef = useRef({});
   const loggedRef = useRef(false);
   const [explainCard, setExplainCard] = useState(null);
+  const [showContext, setShowContext] = useState(false);
+
+  // Reflect a saved "Ask Claude" answer on the current card immediately.
+  function updateCardContext(cardId, context) {
+    setAllCards((cs) => (cs || []).map((x) => (x.id === cardId ? { ...x, context } : x)));
+    setQueue((q) => (q || []).map((x) => (x.id === cardId ? { ...x, context } : x)));
+  }
 
   // Log a study session (split across modules touched) when leaving the Dock.
   async function flushSession() {
@@ -149,6 +156,7 @@ export default function DockMode({ session }) {
         return result === "again" ? [...rest, { ...card, step, due_date }] : rest;
       });
       setRevealed(false);
+      setShowContext(false);
       setLeaving(null);
       setDrag({ x: 0, y: 0, active: false });
     }, 220);
@@ -308,7 +316,17 @@ export default function DockMode({ session }) {
         <div className="dock-front">{card.front}</div>
         {card.image_path && <img className="dock-image" src={publicUrl(card.image_path)} alt="" />}
         {revealed ? (
-          <div className="dock-back">{card.back}</div>
+          <>
+            <div className="dock-back">{card.back}</div>
+            {card.context && (
+              <div className="dock-context">
+                <button className="dock-context-toggle" onClick={() => setShowContext((s) => !s)}>
+                  📝 Saved notes {showContext ? "▾" : "▸"}
+                </button>
+                {showContext && <div className="dock-context-body">{card.context}</div>}
+              </div>
+            )}
+          </>
         ) : (
           <div className="dock-reveal-hint">Tap to reveal</div>
         )}
@@ -342,7 +360,12 @@ export default function DockMode({ session }) {
       </div>
 
       {explainCard && (
-        <ExplainModal card={explainCard} userId={userId} onClose={() => setExplainCard(null)} />
+        <ExplainModal
+          card={explainCard}
+          userId={userId}
+          onCardUpdate={updateCardContext}
+          onClose={() => setExplainCard(null)}
+        />
       )}
     </div>
   );

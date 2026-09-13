@@ -5,13 +5,17 @@ import { MODULES } from "../lib/constants";
 
 const READING_TITLE = "Required Reading";
 
-export default function ExplainModal({ card, userId, onClose }) {
+export default function ExplainModal({ card, userId, onCardUpdate, onClose }) {
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [question, setQuestion] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [cardContext, setCardContext] = useState(card.context || "");
+  const [savingCard, setSavingCard] = useState(false);
+  const [savedToCard, setSavedToCard] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
 
   const moduleTitle = MODULES.find((m) => m.id === card.module_id)?.title || "";
 
@@ -19,6 +23,7 @@ export default function ExplainModal({ card, userId, onClose }) {
     setLoading(true);
     setErr("");
     setSaved(false);
+    setSavedToCard(false);
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -83,6 +88,21 @@ export default function ExplainModal({ card, userId, onClose }) {
     }
   }
 
+  async function saveToCard() {
+    if (!text.trim()) return;
+    setSavingCard(true);
+    try {
+      const newContext = (cardContext ? cardContext + "\n\n———\n\n" : "") + text.trim();
+      const { error } = await supabase.from("cards").update({ context: newContext }).eq("id", card.id);
+      if (error) return;
+      setCardContext(newContext);
+      setSavedToCard(true);
+      if (onCardUpdate) onCardUpdate(card.id, newContext);
+    } finally {
+      setSavingCard(false);
+    }
+  }
+
   return (
     <div className="ex-overlay" onClick={onClose}>
       <div className="ex-box" onClick={(e) => e.stopPropagation()}>
@@ -95,6 +115,15 @@ export default function ExplainModal({ card, userId, onClose }) {
           <div className="ex-front">{card.front}</div>
           <div className="ex-back">{card.back}</div>
         </div>
+
+        {cardContext && (
+          <div className="ex-saved">
+            <button className="ex-saved-toggle" onClick={() => setShowSaved((s) => !s)}>
+              📝 Saved notes on this card {showSaved ? "▾" : "▸"}
+            </button>
+            {showSaved && <div className="ex-saved-body">{cardContext}</div>}
+          </div>
+        )}
 
         <div className="ex-actions">
           <button className="ghost small" onClick={() => ask("context")} disabled={loading}>More context</button>
@@ -120,10 +149,18 @@ export default function ExplainModal({ card, userId, onClose }) {
           <>
             <div className="ex-answer">{text}</div>
             <div className="row" style={{ marginTop: 12 }}>
-              <button onClick={addToReading} disabled={saving || saved}>
+              <button onClick={saveToCard} disabled={savingCard || savedToCard}>
+                {savedToCard ? "✓ Saved to this card" : savingCard ? "Saving…" : "📌 Save to this card"}
+              </button>
+              <button className="ghost" onClick={addToReading} disabled={saving || saved}>
                 {saved ? "✓ Added to Required Reading" : saving ? "Saving…" : "Add to Required Reading"}
               </button>
             </div>
+            {savedToCard && (
+              <div className="gen-success" style={{ marginTop: 8 }}>
+                Saved to this card — you&apos;ll see it under &ldquo;Saved notes&rdquo; on your next review.
+              </div>
+            )}
             {saved && (
               <div className="gen-success" style={{ marginTop: 8 }}>
                 Saved to your <strong>{READING_TITLE}</strong> note for M{card.module_id}.
