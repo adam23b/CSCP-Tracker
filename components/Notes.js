@@ -1,9 +1,18 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { MODULES } from "../lib/constants";
+import { MODULES, sessionsFor, courseSortKey } from "../lib/constants";
 import { uploadImage, publicUrl, deleteImage, newImagePath } from "../lib/storage";
 import DrawingPad from "./DrawingPad";
+import NoteOrganizer from "./NoteOrganizer";
+
+// Order notes to match the course: module → functional area → session, then oldest-first.
+function cmpNotes(a, b) {
+  const ka = courseSortKey(a.module_id, a.functional_area, a.session);
+  const kb = courseSortKey(b.module_id, b.functional_area, b.session);
+  for (let i = 0; i < 3; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+  return (a.created_at || "") < (b.created_at || "") ? -1 : 1;
+}
 
 export default function Notes({ session }) {
   const userId = session.user.id;
@@ -12,7 +21,10 @@ export default function Notes({ session }) {
 
   const [title, setTitle] = useState("");
   const [moduleId, setModuleId] = useState("0");
+  const [area, setArea] = useState("");
+  const [sessionName, setSessionName] = useState("");
   const [content, setContent] = useState("");
+  const [organizerOpen, setOrganizerOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState([]); // File objects not yet uploaded
   const [drawOpen, setDrawOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,6 +63,8 @@ export default function Notes({ session }) {
   function resetForm() {
     setTitle("");
     setModuleId("0");
+    setArea("");
+    setSessionName("");
     setContent("");
     setPendingFiles([]);
     setEditingId(null);
@@ -76,6 +90,8 @@ export default function Notes({ session }) {
           .update({
             title: title.trim(),
             module_id: moduleId === "0" ? null : parseInt(moduleId),
+            functional_area: moduleId === "0" ? null : area || null,
+            session: moduleId === "0" || !area ? null : sessionName || null,
             content,
             image_paths,
             updated_at: new Date().toISOString(),
@@ -91,6 +107,8 @@ export default function Notes({ session }) {
             user_id: userId,
             title: title.trim(),
             module_id: moduleId === "0" ? null : parseInt(moduleId),
+            functional_area: moduleId === "0" ? null : area || null,
+            session: moduleId === "0" || !area ? null : sessionName || null,
             content,
             image_paths: uploadedPaths,
           })
@@ -108,6 +126,8 @@ export default function Notes({ session }) {
     setEditingId(note.id);
     setTitle(note.title);
     setModuleId(note.module_id ? String(note.module_id) : "0");
+    setArea(note.functional_area || "");
+    setSessionName(note.session || "");
     setContent(note.content || "");
     setPendingFiles([]);
   }
@@ -139,8 +159,14 @@ export default function Notes({ session }) {
       if (!map[key]) map[key] = { title: moduleTitle(n.module_id), notes: [] };
       map[key].notes.push(n);
     });
+    Object.values(map).forEach((g) => g.notes.sort(cmpNotes));
     return map;
   }, [notes]);
+
+  const untaggedCount = useMemo(
+    () => notes.filter((n) => n.module_id && !n.functional_area).length,
+    [notes],
+  );
 
   function toggleGroup(key) {
     setOpenGroups((g) => ({ ...g, [key]: !g[key] }));
@@ -154,10 +180,26 @@ export default function Notes({ session }) {
         <h2>{editingId ? "Edit note" : "New note"}</h2>
         <div className="note-form">
           <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <select value={moduleId} onChange={(e) => setModuleId(e.target.value)}>
+          <select value={moduleId} onChange={(e) => { setModuleId(e.target.value); setArea(""); setSessionName(""); }}>
             <option value="0">General (no module)</option>
             {MODULES.map((m) => <option key={m.id} value={m.id}>M{m.id} — {m.title.split(",")[0]}</option>)}
           </select>
+          {moduleId !== "0" && (
+            <>
+              <select value={area} onChange={(e) => { setArea(e.target.value); setSessionName(""); }}>
+                <option value="">Functional area (optional)</option>
+                {(MODULES.find((m) => m.id === parseInt(moduleId))?.areas || []).map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+              {area && (
+                <select value={sessionName} onChange={(e) => setSessionName(e.target.value)}>
+                  <option value="">Session (optional)</option>
+                  {sessionsFor(parseInt(moduleId), area).map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              )}
+            </>
+          )}
           <textarea placeholder="Notes, worked examples, anything text-based…" value={content} onChange={(e) => setContent(e.target.value)} />
 
           <div className="file-row">
@@ -188,7 +230,12 @@ export default function Notes({ session }) {
       </div>
 
       <div className="card">
-        <h2>Your notes <span className="count">{notes.length}</span></h2>
+        <h2>
+          <span>Your notes <span className="count">{notes.length}</span></span>
+          {untaggedCount > 0 && (
+            <button className="ghost small" onClick={() => setOrganizerOpen(true)}>Organize ({untaggedCount})</button>
+          )}
+        </h2>
         {loading ? (
           <div className="empty">Loading…</div>
         ) : (
@@ -206,10 +253,15 @@ export default function Notes({ session }) {
                     ) : (
                       group.notes.map((n) => (
                         <div className="note-row" key={n.id}>
-                          <button className="note-row-title" onClick={() => setViewingNoteId(n.id)}>
-                            {n.title}
-                            {n.image_paths && n.image_paths.length > 0 && <span className="note-row-icon"> 🖼</span>}
-                          </button>
+                          <div className="note-row-main">
+                            <button className="note-row-title" onClick={() => setViewingNoteId(n.id)}>
+                              {n.title}
+                              {n.image_paths && n.image_paths.length > 0 && <span className="note-row-icon"> 🖼</span>}
+                            </button>
+                            {(n.functional_area || n.session) && (
+                              <div className="note-row-tag">{[n.functional_area, n.session].filter(Boolean).join(" · ")}</div>
+                            )}
+                          </div>
                           <button className="danger small" onClick={() => deleteNote(n)}>Delete</button>
                         </div>
                       ))
@@ -222,6 +274,15 @@ export default function Notes({ session }) {
         )}
       </div>
 
+      {organizerOpen && (
+        <NoteOrganizer
+          session={session}
+          notes={notes}
+          onClose={() => setOrganizerOpen(false)}
+          onSaved={load}
+        />
+      )}
+
       {drawOpen && <DrawingPad onSave={addDrawing} onCancel={() => setDrawOpen(false)} />}
 
       {viewingNote && (
@@ -229,7 +290,7 @@ export default function Notes({ session }) {
           <div className="note-viewer-box" onClick={(e) => e.stopPropagation()}>
             <div className="note-top">
               <div>
-                <div className="note-tag">{moduleTitle(viewingNote.module_id)}</div>
+                <div className="note-tag">{[moduleTitle(viewingNote.module_id), viewingNote.functional_area, viewingNote.session].filter(Boolean).join(" · ")}</div>
                 <div className="note-title" style={{ fontSize: 19 }}>{viewingNote.title}</div>
               </div>
               <div className="dr-actions">
