@@ -1,15 +1,20 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { MODULES, sessionsFor, courseSortKey } from "../lib/constants";
+import { MODULES, sessionsFor, courseSortKey, isReferenceNote } from "../lib/constants";
 import { uploadImage, publicUrl, deleteImage, newImagePath } from "../lib/storage";
 import DrawingPad from "./DrawingPad";
 import NoteOrganizer from "./NoteOrganizer";
 
 // Order notes to match the course: module → functional area → session, then oldest-first.
+// "Required Reading" is a module-level reference — pin it to the top of its module.
+function noteKey(n) {
+  if (isReferenceNote(n)) return [MODULES.findIndex((m) => m.id === n.module_id), -1, -1];
+  return courseSortKey(n.module_id, n.functional_area, n.session);
+}
 function cmpNotes(a, b) {
-  const ka = courseSortKey(a.module_id, a.functional_area, a.session);
-  const kb = courseSortKey(b.module_id, b.functional_area, b.session);
+  const ka = noteKey(a);
+  const kb = noteKey(b);
   for (let i = 0; i < 3; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
   return (a.created_at || "") < (b.created_at || "") ? -1 : 1;
 }
@@ -164,7 +169,7 @@ export default function Notes({ session }) {
   }, [notes]);
 
   const untaggedCount = useMemo(
-    () => notes.filter((n) => n.module_id && !n.functional_area).length,
+    () => notes.filter((n) => n.module_id && !n.functional_area && !isReferenceNote(n)).length,
     [notes],
   );
 
@@ -258,9 +263,11 @@ export default function Notes({ session }) {
                               {n.title}
                               {n.image_paths && n.image_paths.length > 0 && <span className="note-row-icon"> 🖼</span>}
                             </button>
-                            {(n.functional_area || n.session) && (
+                            {isReferenceNote(n) ? (
+                              <div className="note-row-tag note-row-ref">Reference</div>
+                            ) : (n.functional_area || n.session) ? (
                               <div className="note-row-tag">{[n.functional_area, n.session].filter(Boolean).join(" · ")}</div>
-                            )}
+                            ) : null}
                           </div>
                           <button className="danger small" onClick={() => deleteNote(n)}>Delete</button>
                         </div>

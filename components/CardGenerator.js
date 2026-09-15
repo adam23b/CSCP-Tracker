@@ -121,6 +121,7 @@ export default function CardGenerator({ session }) {
         const { error: noteError } = await supabase.from("notes").insert({
           user_id: userId,
           module_id: parseInt(moduleId),
+          functional_area: functionalArea || null,
           title,
           content: summary.trim(),
           image_paths: [],

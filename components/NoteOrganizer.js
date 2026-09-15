@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { MODULES, sessionsFor } from "../lib/constants";
+import { MODULES, sessionsFor, isReferenceNote } from "../lib/constants";
 
 export default function NoteOrganizer({ session, notes, onClose, onSaved }) {
-  // Only notes that have a module but no functional area can be placed.
-  const targets = notes.filter((n) => n.module_id && !n.functional_area);
+  // Notes with a module but no functional area, excluding module-level reference
+  // notes (Required Reading), which don't belong to a single session.
+  const targets = notes.filter((n) => n.module_id && !n.functional_area && !isReferenceNote(n));
 
   const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState({}); // id -> { functional_area, session }

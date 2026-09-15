@@ -1,9 +1,7 @@
 "use client";
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { MODULES } from "../lib/constants";
-
-const READING_TITLE = "Required Reading";
+import { MODULES, REQUIRED_READING_TITLE as READING_TITLE } from "../lib/constants";
 
 export default function ExplainModal({ card, userId, onCardUpdate, onClose }) {
   const [loading, setLoading] = useState(false);
