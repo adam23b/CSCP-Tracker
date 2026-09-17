@@ -223,6 +223,7 @@ export default function Dashboard({ session }) {
 
   async function deleteCard(id) {
     const existing = cards.find((c) => c.id === id);
+    if (!window.confirm(`Delete this flashcard?\n\n${existing ? existing.front : ""}\n\nThis can't be undone.`)) return;
     if (existing?.image_path) await deleteImage(existing.image_path);
     await supabase.from("cards").delete().eq("id", id);
     setCards((cs) => cs.filter((c) => c.id !== id));

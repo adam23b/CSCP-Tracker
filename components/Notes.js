@@ -5,6 +5,7 @@ import { MODULES, sessionsFor, courseSortKey, isReferenceNote } from "../lib/con
 import { uploadImage, publicUrl, deleteImage, newImagePath } from "../lib/storage";
 import DrawingPad from "./DrawingPad";
 import NoteOrganizer from "./NoteOrganizer";
+import NoteTrash from "./NoteTrash";
 
 // Order notes to match the course: module → functional area → session, then oldest-first.
 // "Required Reading" is a module-level reference — pin it to the top of its module.
@@ -22,6 +23,8 @@ function cmpNotes(a, b) {
 export default function Notes({ session }) {
   const userId = session.user.id;
   const [notes, setNotes] = useState([]);
+  const [trashedNotes, setTrashedNotes] = useState([]);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [title, setTitle] = useState("");
@@ -50,7 +53,24 @@ export default function Notes({ session }) {
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
-    setNotes(data || []);
+    const all = data || [];
+    const active = all.filter((n) => !n.deleted_at);
+    let trashed = all.filter((n) => n.deleted_at);
+
+    // Auto-purge notes that have been in Trash for more than 30 days.
+    const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
+    const old = trashed.filter((n) => new Date(n.deleted_at).getTime() < cutoff);
+    if (old.length) {
+      for (const n of old) {
+        for (const p of n.image_paths || []) await deleteImage(p);
+        await supabase.from("notes").delete().eq("id", n.id);
+      }
+      const oldIds = new Set(old.map((n) => n.id));
+      trashed = trashed.filter((n) => !oldIds.has(n.id));
+    }
+
+    setNotes(active);
+    setTrashedNotes(trashed);
     setLoading(false);
   }
 
@@ -144,15 +164,37 @@ export default function Notes({ session }) {
     setNotes((ns) => ns.map((n) => (n.id === note.id ? { ...n, image_paths } : n)));
   }
 
+  // Soft delete → moves the note to Trash (recoverable for 30 days).
   async function deleteNote(note) {
-    if (!window.confirm(`Delete note "${note.title}"?\n\nThis can't be undone.`)) return false;
-    for (const path of note.image_paths || []) {
-      await deleteImage(path);
-    }
-    await supabase.from("notes").delete().eq("id", note.id);
+    if (!window.confirm(`Move note "${note.title}" to Trash?\n\nYou can restore it from Trash for 30 days.`)) return false;
+    const deleted_at = new Date().toISOString();
+    await supabase.from("notes").update({ deleted_at }).eq("id", note.id);
     setNotes((ns) => ns.filter((n) => n.id !== note.id));
+    setTrashedNotes((ts) => [{ ...note, deleted_at }, ...ts]);
     if (editingId === note.id) resetForm();
     return true;
+  }
+
+  async function restoreNote(note) {
+    await supabase.from("notes").update({ deleted_at: null }).eq("id", note.id);
+    setTrashedNotes((ts) => ts.filter((n) => n.id !== note.id));
+    setNotes((ns) => [{ ...note, deleted_at: null }, ...ns]);
+  }
+
+  async function purgeNote(note) {
+    if (!window.confirm(`Permanently delete "${note.title}"?\n\nThis cannot be undone.`)) return;
+    for (const p of note.image_paths || []) await deleteImage(p);
+    await supabase.from("notes").delete().eq("id", note.id);
+    setTrashedNotes((ts) => ts.filter((n) => n.id !== note.id));
+  }
+
+  async function emptyTrash() {
+    if (!window.confirm(`Permanently delete all ${trashedNotes.length} note(s) in Trash?\n\nThis cannot be undone.`)) return;
+    for (const n of trashedNotes) {
+      for (const p of n.image_paths || []) await deleteImage(p);
+      await supabase.from("notes").delete().eq("id", n.id);
+    }
+    setTrashedNotes([]);
   }
 
   const moduleTitle = (id) => (id ? MODULES.find((m) => m.id === id)?.title.split(",")[0] : "General");
@@ -239,9 +281,14 @@ export default function Notes({ session }) {
       <div className="card">
         <h2>
           <span>Your notes <span className="count">{notes.length}</span></span>
-          {untaggedCount > 0 && (
-            <button className="ghost small" onClick={() => setOrganizerOpen(true)}>Organize ({untaggedCount})</button>
-          )}
+          <span className="note-head-actions">
+            {untaggedCount > 0 && (
+              <button className="ghost small" onClick={() => setOrganizerOpen(true)}>Organize ({untaggedCount})</button>
+            )}
+            {trashedNotes.length > 0 && (
+              <button className="ghost small" onClick={() => setTrashOpen(true)}>🗑 Trash ({trashedNotes.length})</button>
+            )}
+          </span>
         </h2>
         {loading ? (
           <div className="empty">Loading…</div>
@@ -289,6 +336,16 @@ export default function Notes({ session }) {
           notes={notes}
           onClose={() => setOrganizerOpen(false)}
           onSaved={load}
+        />
+      )}
+
+      {trashOpen && (
+        <NoteTrash
+          trashed={trashedNotes}
+          onRestore={restoreNote}
+          onPurge={purgeNote}
+          onEmpty={emptyTrash}
+          onClose={() => setTrashOpen(false)}
         />
       )}
 

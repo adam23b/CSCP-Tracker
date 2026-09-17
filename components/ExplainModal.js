@@ -62,6 +62,7 @@ export default function ExplainModal({ card, userId, onCardUpdate, onClose }) {
         .eq("user_id", userId)
         .eq("module_id", card.module_id)
         .eq("title", READING_TITLE)
+        .is("deleted_at", null)
         .limit(1)
         .maybeSingle();
 

@@ -172,6 +172,9 @@ input[type=file] { color: var(--muted); font-size: 12px; }
 .note-row-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .note-row-tag { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
 .note-row-ref { color: var(--amber); }
+.note-head-actions { display: flex; gap: 8px; align-items: center; }
+.trash-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.trash-row .dr-actions { flex-shrink: 0; }
 .org-list { display: flex; flex-direction: column; gap: 12px; max-height: 62vh; overflow-y: auto; padding-right: 4px; }
 .org-row { background: var(--panel-alt); border-radius: 10px; padding: 12px 14px; }
 .org-note-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; }
