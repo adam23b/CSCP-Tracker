@@ -18,6 +18,8 @@ export default function CardGenerator({ session }) {
   const [summary, setSummary] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
   const [keepSummary, setKeepSummary] = useState(true);
+  const [summaryOnlySaved, setSummaryOnlySaved] = useState(false);
+  const [savingSummaryOnly, setSavingSummaryOnly] = useState(false);
 
   const areasFor = (id) => MODULES.find((m) => m.id === parseInt(id))?.areas || [];
   const [generating, setGenerating] = useState(false);
@@ -63,6 +65,7 @@ export default function CardGenerator({ session }) {
       setSummary(payload.summary || "");
       setNoteTitle(payload.noteTitle || "");
       setKeepSummary(!!payload.summary);
+      setSummaryOnlySaved(false);
       setCandidates((payload.cards || []).map((c) => ({ ...c, keep: true })));
     } catch {
       setError("Couldn't reach the generator. Check your connection and try again.");
@@ -116,21 +119,14 @@ export default function CardGenerator({ session }) {
       }
 
       let noteSaved = false;
-      if (keepSummary && summary.trim()) {
-        const title = (noteTitle.trim() || `${functionalArea || "Summary"}`).slice(0, 200);
-        const { error: noteError } = await supabase.from("notes").insert({
-          user_id: userId,
-          module_id: parseInt(moduleId),
-          functional_area: functionalArea || null,
-          title,
-          content: summary.trim(),
-          image_paths: [],
-        });
+      // Skip if the summary was already saved on its own via "Save summary to Notes".
+      if (keepSummary && summary.trim() && !summaryOnlySaved) {
+        const { error: noteError } = await supabase.from("notes").insert(buildNoteRow());
         noteSaved = !noteError;
       }
 
       setSavedCount(rows.length);
-      setSavedNote(noteSaved);
+      setSavedNote(noteSaved || summaryOnlySaved);
       setCandidates(null);
       setNotes("");
       setAutoDetected(false);
@@ -138,8 +134,38 @@ export default function CardGenerator({ session }) {
       setSummary("");
       setNoteTitle("");
       setSummarize(false);
+      setSummaryOnlySaved(false);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function buildNoteRow() {
+    return {
+      user_id: userId,
+      module_id: parseInt(moduleId),
+      functional_area: functionalArea || null,
+      title: (noteTitle.trim() || functionalArea || "Summary").slice(0, 200),
+      content: summary.trim(),
+      image_paths: [],
+    };
+  }
+
+  // Save just the study-note summary — no flashcards created.
+  async function saveSummaryOnly() {
+    if (!summary.trim()) return;
+    setSavingSummaryOnly(true);
+    setError("");
+    try {
+      const { error: noteError } = await supabase.from("notes").insert(buildNoteRow());
+      if (noteError) {
+        setError("Couldn't save the note. Try again.");
+        return;
+      }
+      setSummaryOnlySaved(true);
+      setKeepSummary(false); // don't also save it when creating cards
+    } finally {
+      setSavingSummaryOnly(false);
     }
   }
 
@@ -230,8 +256,8 @@ export default function CardGenerator({ session }) {
               <div className="gen-summary">
                 <div className="gen-card-head">
                   <label className="gen-keep">
-                    <input type="checkbox" checked={keepSummary} onChange={() => setKeepSummary((k) => !k)} />
-                    Save this summary to Notes
+                    <input type="checkbox" checked={keepSummary} onChange={() => setKeepSummary((k) => !k)} disabled={summaryOnlySaved} />
+                    Also save this summary when I create cards
                   </label>
                   <span className="gen-prio gen-prio-medium">Study note</span>
                 </div>
@@ -249,6 +275,16 @@ export default function CardGenerator({ session }) {
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                 />
+                <div className="row" style={{ marginTop: 10 }}>
+                  <button className="ghost" onClick={saveSummaryOnly} disabled={savingSummaryOnly || summaryOnlySaved || !summary.trim()}>
+                    {summaryOnlySaved ? "✓ Saved to Notes" : savingSummaryOnly ? "Saving…" : "Save summary to Notes (no cards)"}
+                  </button>
+                </div>
+                {summaryOnlySaved && (
+                  <div className="gen-success" style={{ marginTop: 8 }}>
+                    Saved to Notes under M{moduleId}{functionalArea ? ` · ${functionalArea}` : ""} — no cards created.
+                  </div>
+                )}
               </div>
             )}
 
