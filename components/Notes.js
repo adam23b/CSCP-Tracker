@@ -145,12 +145,14 @@ export default function Notes({ session }) {
   }
 
   async function deleteNote(note) {
+    if (!window.confirm(`Delete note "${note.title}"?\n\nThis can't be undone.`)) return false;
     for (const path of note.image_paths || []) {
       await deleteImage(path);
     }
     await supabase.from("notes").delete().eq("id", note.id);
     setNotes((ns) => ns.filter((n) => n.id !== note.id));
     if (editingId === note.id) resetForm();
+    return true;
   }
 
   const moduleTitle = (id) => (id ? MODULES.find((m) => m.id === id)?.title.split(",")[0] : "General");
@@ -302,7 +304,7 @@ export default function Notes({ session }) {
               </div>
               <div className="dr-actions">
                 <button className="ghost small" onClick={() => { editNote(viewingNote); setViewingNoteId(null); }}>Edit</button>
-                <button className="danger small" onClick={() => { deleteNote(viewingNote); setViewingNoteId(null); }}>Delete</button>
+                <button className="danger small" onClick={async () => { if (await deleteNote(viewingNote)) setViewingNoteId(null); }}>Delete</button>
                 <button className="ghost small" onClick={() => setViewingNoteId(null)}>Close</button>
               </div>
             </div>
