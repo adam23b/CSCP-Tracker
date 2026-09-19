@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
 import { MODULES } from "../lib/constants";
@@ -9,6 +9,19 @@ export default function Practice({ session }) {
   const [moduleId, setModuleId] = useState(1);
   const [area, setArea] = useState(""); // "" = whole module
   const [count, setCount] = useState(8);
+
+  // Deep link: /practice?module=3&area=Forecasting preselects the scope so the
+  // "Practice your weakest area" shortcut lands here ready to start. Read from
+  // window (not useSearchParams) to keep this page statically prerendered.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mid = parseInt(params.get("module"), 10);
+    const m = MODULES.find((x) => x.id === mid);
+    if (!m) return;
+    setModuleId(mid);
+    const a = params.get("area");
+    if (a && (m.areas || []).includes(a)) setArea(a);
+  }, []);
 
   const [phase, setPhase] = useState("setup"); // setup | loading | quiz | done
   const [error, setError] = useState("");

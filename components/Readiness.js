@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
 import { MODULES, dayStr } from "../lib/constants";
-import { readiness, readinessLabel, blendReadiness, avgOrNull } from "../lib/readiness";
+import { readiness, readinessLabel, blendReadiness, avgOrNull, weakestAreas } from "../lib/readiness";
 
 const UNTAGGED = "Untagged";
 
@@ -123,6 +123,12 @@ export default function Readiness({ session }) {
   const overallQuiz = useMemo(() => avgOrNull(Object.values(quizMap)), [quizMap]);
   const overallCombined = blendReadiness(overallFlash, overallQuiz);
 
+  // Weakest functional areas → one-tap into a targeted practice quiz.
+  const weakList = useMemo(
+    () => weakestAreas(MODULES, cards || [], quizMap, today, 3),
+    [cards, quizMap, today],
+  );
+
   function moduleBlend(m) {
     const cardsIn = byModule[m.id] || [];
     const f = readiness(cardsIn, today).pct;
@@ -202,6 +208,35 @@ export default function Readiness({ session }) {
         </div>
         <Ring pct={overallCombined} />
       </div>
+
+      {hasData && !editMode && weakList.length > 0 && (
+        <div className="card rd-weak">
+          <div className="eyebrow">Focus next</div>
+          <h2 style={{ margin: "6px 0 4px" }}>Your weakest areas</h2>
+          <p className="rd-weak-hint">Lowest blended readiness right now — jump straight into a targeted practice quiz.</p>
+          <div className="rd-weak-list">
+            {weakList.map((w) => {
+              const label = readinessLabel(w.pct);
+              return (
+                <div className="rd-weak-row" key={`${w.moduleId}::${w.area}`}>
+                  <div className="rd-weak-info">
+                    <div className="rd-weak-area">{w.area}</div>
+                    <div className="rd-weak-sub">M{w.moduleId} · {w.moduleTitle.split(",")[0]}</div>
+                    <Bar pct={w.pct} />
+                  </div>
+                  <span className={`rd-weak-pct rd-${label.cls}`}>{w.pct}%</span>
+                  <Link
+                    className="rd-weak-btn"
+                    href={`/practice?module=${w.moduleId}&area=${encodeURIComponent(w.area)}`}
+                  >
+                    Practice
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {!hasData ? (
         <div className="card">
