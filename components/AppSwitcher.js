@@ -1,10 +1,14 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // The thin bar across the top of every page, shared in look and order with the
 // Notes app and Tracker. Links follow the domain family the page was opened on
 // (clashapp.online, or tuckertracker.com for networks that block .online).
+// The family is read from the browser's address after load (every page here is
+// prerendered, so the server cannot know the host); until then the primary
+// family's links render, which also keeps server and client markup identical.
 // Hidden in the full-screen Dock. Keep in step with lib/apps.ts in the Notes repo.
 const HOSTS = {
   clashapp: { notes: "https://www.clashapp.online", tracker: "https://tracker.clashapp.online", sso: true },
@@ -16,8 +20,12 @@ export function familyOf(host) {
   return name === "tuckertracker.com" || name.endsWith(".tuckertracker.com") ? "tuckertracker" : "clashapp";
 }
 
-export default function AppSwitcher({ family = "clashapp" }) {
+export default function AppSwitcher() {
   const pathname = usePathname() || "/";
+  const [family, setFamily] = useState("clashapp");
+  useEffect(() => {
+    setFamily(familyOf(window.location.hostname));
+  }, []);
   if (pathname.startsWith("/dock")) return null;
 
   const { notes, tracker, sso } = HOSTS[family] || HOSTS.clashapp;
