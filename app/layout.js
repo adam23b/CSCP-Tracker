@@ -1,4 +1,5 @@
 import "./globals.css";
+import AppSwitcher from "../components/AppSwitcher";
 import RegisterSW from "../components/RegisterSW";
 
 export const metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <RegisterSW />
+        <AppSwitcher />
         {children}
       </body>
     </html>
