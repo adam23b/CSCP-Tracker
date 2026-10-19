@@ -1,5 +1,7 @@
+import { headers } from "next/headers";
+
 import "./globals.css";
-import AppSwitcher from "../components/AppSwitcher";
+import AppSwitcher, { familyOf } from "../components/AppSwitcher";
 import RegisterSW from "../components/RegisterSW";
 
 export const metadata = {
@@ -24,6 +26,8 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
+  const h = headers();
+  const family = familyOf(h.get("x-forwarded-host") || h.get("host"));
   return (
     <html lang="en">
       <head>
@@ -35,7 +39,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <RegisterSW />
-        <AppSwitcher />
+        <AppSwitcher family={family} />
         {children}
       </body>
     </html>

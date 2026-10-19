@@ -1,24 +1,10 @@
 /** @type {import('next').NextConfig} */
 
 /**
- * The app moved from cscp.tuckertracker.com to cscp.clashapp.online. Anything
- * still arriving at the old address (bookmarks, installed PWAs) is sent to the
- * same path on the new one, permanently. API routes are left alone.
+ * The app answers on two addresses: cscp.clashapp.online (primary) and
+ * cscp.tuckertracker.com (kept live because some networks block .online
+ * domains). Both serve the same app and data; nothing redirects between them.
  */
-const OLD_HOST = "cscp.tuckertracker.com";
-const NEW_ORIGIN = "https://cscp.clashapp.online";
-
-const nextConfig = {
-  async redirects() {
-    return [
-      {
-        source: "/:path((?!api/).*)",
-        has: [{ type: "host", value: OLD_HOST }],
-        destination: `${NEW_ORIGIN}/:path`,
-        permanent: true,
-      },
-    ];
-  },
-};
+const nextConfig = {};
 
 module.exports = nextConfig;
