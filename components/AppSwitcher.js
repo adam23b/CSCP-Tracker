@@ -16,7 +16,7 @@ const APPS = [
   { key: "calendar", label: "Calendar", href: `${NOTES}/calendar` },
   { key: "meetings", label: "Meetings", href: `${NOTES}/meetings` },
   { key: "ask", label: "Ask", href: `${NOTES}/ask` },
-  { key: "tracker", label: "Tracker", href: "https://tracker.clashapp.online" },
+  { key: "tracker", label: "Tracker", href: "https://tracker.clashapp.online/login?sso=1&next=%2F" },
   { key: "cscp", label: "CSCP", href: "/", here: true },
 ];
 
